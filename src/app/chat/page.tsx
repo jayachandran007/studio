@@ -3,15 +3,17 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "@/lib/firebase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, User, Smile } from "lucide-react";
+import { Loader2, Send, User, Smile, Paperclip, X } from "lucide-react";
 
 import { scrambleMessage } from "@/ai/flows/scramble-message-llm";
 import { cn } from "@/lib/utils";
@@ -24,20 +26,24 @@ interface Message {
   id: string;
   originalText: string;
   scrambledText: string;
-  sender: string; // "user1" or "user2"
+  sender: string;
   createdAt: any;
+  imageUrl?: string;
 }
 
 export default function ChatPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [showScrambled, setShowScrambled] = useState(true);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const isAuthenticated = sessionStorage.getItem("isAuthenticated");
@@ -96,11 +102,27 @@ export default function ChatPage() {
     inputRef.current?.focus();
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if(fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleSend = async () => {
     const trimmedInput = input.trim();
-    if (!trimmedInput || !currentUser) return;
+    if ((!trimmedInput && !imageFile) || !currentUser) return;
 
-    if (trimmedInput.toLowerCase() === 'toggle') {
+    if (trimmedInput.toLowerCase() === 'toggle' && !imageFile) {
       setShowScrambled(prev => !prev);
       setInput('');
       inputRef.current?.focus();
@@ -109,19 +131,31 @@ export default function ChatPage() {
 
     setIsSending(true);
     setInput("");
+    
+    let imageUrl: string | undefined = undefined;
 
     try {
+      if (imageFile) {
+        const storageRef = ref(storage, `chat_images/${Date.now()}_${imageFile.name}`);
+        await uploadBytes(storageRef, imageFile);
+        imageUrl = await getDownloadURL(storageRef);
+      }
+
       const scrambleResult = await scrambleMessage({
         message: trimmedInput,
         method: SCRAMBLE_METHOD,
       });
-      const newMessage = {
+
+      const newMessage: Omit<Message, 'id'> = {
         originalText: trimmedInput,
         scrambledText: scrambleResult.scrambledMessage,
         sender: currentUser,
         createdAt: serverTimestamp(),
+        ...(imageUrl && { imageUrl }),
       };
+
       await addDoc(collection(db, "messages"), newMessage);
+      removeImage();
 
     } catch (error) {
       console.error("Error sending message:", error);
@@ -174,6 +208,15 @@ export default function ChatPage() {
                         : "bg-muted"
                     )}
                   >
+                    {message.imageUrl && !showScrambled && (
+                      <Image 
+                        src={message.imageUrl} 
+                        alt="Chat image" 
+                        width={300} 
+                        height={200}
+                        className="rounded-md mb-2 object-cover" 
+                      />
+                    )}
                     <p>{showScrambled ? message.scrambledText : message.originalText}</p>
                   </div>
                    {message.sender === currentUser && (
@@ -189,7 +232,20 @@ export default function ChatPage() {
           </div>
         </ScrollArea>
       </main>
-      <footer className="border-t bg-card p-4">
+      <footer className="border-t bg-card p-4 space-y-2">
+        {imagePreview && (
+          <div className="relative w-24 h-24">
+            <Image src={imagePreview} alt="Image preview" layout="fill" className="rounded-md object-cover" />
+            <Button
+              variant="destructive"
+              size="icon"
+              className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+              onClick={removeImage}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
         <div className="relative flex items-center gap-2">
           <Input
             ref={inputRef}
@@ -198,8 +254,19 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             disabled={isSending}
-            className="pr-12"
+            className="pr-24"
           />
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageChange}
+            className="hidden"
+            accept="image/*"
+          />
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => fileInputRef.current?.click()}>
+              <Paperclip className="h-4 w-4" />
+              <span className="sr-only">Attach Image</span>
+          </Button>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
@@ -228,7 +295,7 @@ export default function ChatPage() {
             size="icon"
             className="h-8 w-8 shrink-0"
             onClick={handleSend}
-            disabled={isSending || !input.trim()}
+            disabled={isSending || (!input.trim() && !imageFile)}
           >
             {isSending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
             <span className="sr-only">Send</span>
