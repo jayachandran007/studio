@@ -68,6 +68,26 @@ export default function ChatPage() {
     }
   }, [messages]);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setShowScrambled(true);
+      }
+    };
+
+    const handleBlur = () => {
+      setShowScrambled(true);
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
   const handleSend = async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput || !currentUser) return;
@@ -75,6 +95,7 @@ export default function ChatPage() {
     if (trimmedInput.toLowerCase() === 'toggle') {
       setShowScrambled(prev => !prev);
       setInput('');
+      inputRef.current?.focus();
       return;
     }
 
