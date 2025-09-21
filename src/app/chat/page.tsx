@@ -362,62 +362,64 @@ export default function ChatPage() {
             </Button>
           </div>
         )}
-        <div className="relative flex items-end gap-2 p-2">
-           <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImageChange}
-              className="hidden"
-              accept="image/*"
-            />
-            <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 self-end" onClick={handleAttachClick}>
-                <Paperclip className="h-5 w-5" />
-                <span className="sr-only">Attach Image</span>
-            </Button>
-          <Textarea
-            ref={textareaRef}
-            placeholder="Type your message..."
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyPress}
-            disabled={isSending}
-            className="rounded-2xl pr-20 bg-muted resize-none max-h-40 overflow-y-auto"
-            rows={1}
+        <div className="flex items-end gap-2 p-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageChange}
+            className="hidden"
+            accept="image/*"
           />
-          <div className="absolute right-4 bottom-4 flex items-center gap-1">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                  <Smile className="h-4 w-4" />
-                  <span className="sr-only">Add Emoji</span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2">
-                <div className="grid grid-cols-6 gap-1">
-                  {EMOJIS.map((emoji) => (
-                    <Button
-                      key={emoji}
-                      variant="ghost"
-                      size="icon"
-                      className="text-xl"
-                      onClick={() => handleEmojiClick(emoji)}
-                    >
-                      {emoji}
-                    </Button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Button
-              type="submit"
-              size="icon"
-              className="h-8 w-8 shrink-0 rounded-full bg-primary text-primary-foreground"
-              onClick={handleSend}
-              disabled={isSending || (!input.trim() && !imageFile)}
-            >
-              {isSending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
-              <span className="sr-only">Send</span>
-            </Button>
+          <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0" onClick={handleAttachClick}>
+              <Paperclip className="h-5 w-5" />
+              <span className="sr-only">Attach Image</span>
+          </Button>
+          <div className="relative flex-1">
+            <Textarea
+              ref={textareaRef}
+              placeholder="Type your message..."
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyPress}
+              disabled={isSending}
+              className="rounded-2xl pr-20 bg-muted resize-none max-h-40 overflow-y-auto"
+              rows={1}
+            />
+            <div className="absolute right-2 bottom-2 flex items-center gap-1">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                    <Smile className="h-4 w-4" />
+                    <span className="sr-only">Add Emoji</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2">
+                  <div className="grid grid-cols-6 gap-1">
+                    {EMOJIS.map((emoji) => (
+                      <Button
+                        key={emoji}
+                        variant="ghost"
+                        size="icon"
+                        className="text-xl"
+                        onClick={() => handleEmojiClick(emoji)}
+                      >
+                        {emoji}
+                      </Button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button
+                type="submit"
+                size="icon"
+                className="h-8 w-8 shrink-0 rounded-full bg-primary text-primary-foreground"
+                onClick={handleSend}
+                disabled={isSending || (!input.trim() && !imageFile)}
+              >
+                {isSending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
+                <span className="sr-only">Send</span>
+              </Button>
+            </div>
           </div>
         </div>
       </footer>
