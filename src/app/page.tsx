@@ -17,34 +17,32 @@ export default function DisguisedLoginPage() {
   const [input, setInput] = useState("");
   const router = useRouter();
 
-  const handleLogin = useCallback(async (passcode: string) => {
-    const user = PASSCODES[passcode];
-    if (user) {
-      try {
-        await signInAnonymously(auth);
-        sessionStorage.setItem("isAuthenticated", "true");
-        sessionStorage.setItem("currentUser", user);
-        router.push("/chat");
-      } catch (error) {
-        console.error("Anonymous sign-in failed:", error);
-        router.push("https://news.google.com");
-      }
-    } else {
+  const handleLogin = useCallback(async (userIdentifier: string) => {
+    try {
+      await signInAnonymously(auth);
+      sessionStorage.setItem("isAuthenticated", "true");
+      sessionStorage.setItem("currentUser", userIdentifier);
+      router.push("/chat");
+    } catch (error) {
+      console.error("Anonymous sign-in failed:", error);
+      // Fallback redirect to maintain disguise
       router.push("https://news.google.com");
     }
   }, [router]);
   
   const handleKeyPress = useCallback(async (event: KeyboardEvent) => {
-    let currentInput = input;
-
     if (event.key === 'Enter') {
-      if(currentInput.length > 0) {
-        await handleLogin(currentInput);
-        setInput(""); 
+      const user = PASSCODES[input];
+      if (user) {
+        await handleLogin(user);
+      } else {
+        router.push("https://news.google.com");
       }
+      setInput(""); 
       return;
     }
     
+    let currentInput = input;
     if (event.key === 'Backspace') {
       currentInput = currentInput.slice(0, -1);
     } else if (event.key.length === 1) { // Only capture single characters
@@ -54,13 +52,14 @@ export default function DisguisedLoginPage() {
     if (currentInput.length > MAX_PASSCODE_LENGTH) {
         currentInput = currentInput.slice(currentInput.length - MAX_PASSCODE_LENGTH);
     }
-
+    
     setInput(currentInput);
 
     // Check for passcode match on every keypress
-    if (PASSCODES[currentInput]) {
-      await handleLogin(currentInput);
-      setInput("");
+    const user = PASSCODES[currentInput];
+    if (user) {
+      await handleLogin(user);
+      setInput(""); // Reset input after successful login
     }
 
   }, [input, router, handleLogin]);
