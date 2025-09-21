@@ -1,5 +1,5 @@
 
-import { initializeApp, getApps } from "firebase/app";
+import { initializeApp, getApp, getApps } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -10,14 +10,11 @@ const firebaseConfig = {
   "authDomain": "studio-9367397757-f04cc.firebaseapp.com",
   "measurementId": "",
   "messagingSenderId": "129385794267",
-  "storageBucket": "gs://studio-9367397757-f04cc.appspot.com"
+  "storageBucket": "studio-9367397757-f04cc.appspot.com"
 };
 
 // Initialize Firebase
-let app;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-}
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 const db = getFirestore(app);
 const storage = getStorage(app);
