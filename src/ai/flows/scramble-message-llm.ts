@@ -33,7 +33,7 @@ const prompt = ai.definePrompt({
   name: 'scrambleMessagePrompt',
   input: {schema: ScrambleMessageInputSchema},
   output: {schema: ScrambleMessageOutputSchema},
-  prompt: `You are a message scrambling expert. You will take a message and scramble it according to the method specified by the user. If the message contains emojis, you must also scramble them by replacing them with different emojis. Return ONLY the scrambled message.
+  prompt: `You are a message scrambling expert. You will take a message and scramble it according to the method specified by the user. If the message contains emojis, you must remove them entirely from the scrambled output. Return ONLY the scrambled message.
 
 Message: {{{message}}}
 Method: {{{method}}}`,
