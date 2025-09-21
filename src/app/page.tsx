@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { KeyRound } from "lucide-react";
 
-const CORRECT_PASSCODE = "1234";
+const CORRECT_PASSCODE = "sweetsex";
 
 export default function LoginPage() {
   const [passcode, setPasscode] = useState("");

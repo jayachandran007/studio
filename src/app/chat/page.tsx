@@ -3,6 +3,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,10 +18,11 @@ import { cn } from "@/lib/utils";
 const SCRAMBLE_METHOD = "Letter substitution (A=B, B=C, etc.)";
 
 interface Message {
-  id: number;
+  id: string;
   originalText: string;
   scrambledText: string;
   sender: "user" | "agent";
+  createdAt: any;
 }
 
 export default function ChatPage() {
@@ -38,6 +41,18 @@ export default function ChatPage() {
     }
   }, [router]);
   
+  useEffect(() => {
+    const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const messagesData: Message[] = [];
+      querySnapshot.forEach((doc) => {
+        messagesData.push({ id: doc.id, ...doc.data() } as Message);
+      });
+      setMessages(messagesData);
+    });
+    return () => unsubscribe();
+  }, []);
+
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTo({
@@ -66,30 +81,31 @@ export default function ChatPage() {
         message: trimmedInput,
         method: SCRAMBLE_METHOD,
       });
-      const userMessage: Message = {
-        id: Date.now(),
+      const userMessage = {
         originalText: trimmedInput,
         scrambledText: userScrambleResult.scrambledMessage,
-        sender: "user",
+        sender: "user" as const,
+        createdAt: serverTimestamp(),
       };
+      await addDoc(collection(db, "messages"), userMessage);
+
       // For the agent's reply, we'll use the user's scrambled message as input
       const agentScrambleResult = await scrambleMessage({
           message: userScrambleResult.scrambledMessage,
           method: SCRAMBLE_METHOD,
       });
-      const agentMessage: Message = {
-        id: Date.now() + 1,
-        // The agent's "original" text is the user's scrambled text
+      const agentMessage = {
         originalText: userScrambleResult.scrambledMessage,
         scrambledText: agentScrambleResult.scrambledMessage,
-        sender: "agent",
+        sender: "agent" as const,
+        createdAt: serverTimestamp(),
       };
-      setMessages((prev) => [...prev, userMessage, agentMessage]);
+      await addDoc(collection(db, "messages"), agentMessage);
     } catch (error) {
-      console.error("Error scrambling message:", error);
+      console.error("Error sending message:", error);
       toast({
         title: "Error",
-        description: "Could not get a response. Please try again.",
+        description: "Could not send message. Please try again.",
         variant: "destructive",
       });
     } finally {
