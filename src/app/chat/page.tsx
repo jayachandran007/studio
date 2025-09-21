@@ -86,7 +86,7 @@ export default function ChatPage() {
     };
 
     const handleVisibilityChange = () => {
-      if (document.hidden && !isPickingFile.current) {
+      if (document.hidden) {
         handleLogout();
         setShowScrambled(true);
       }
@@ -114,6 +114,7 @@ export default function ChatPage() {
       window.removeEventListener('blur', handleBlur);
     };
   }, [router]);
+
 
   const handleEmojiClick = (emoji: string) => {
     setInput(prev => prev + emoji);
