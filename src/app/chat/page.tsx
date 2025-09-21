@@ -423,5 +423,4 @@ export default function ChatPage() {
       </footer>
     </div>
   );
-
-    
+}
