@@ -78,24 +78,26 @@ export default function ChatPage() {
   }, [messages]);
 
   useEffect(() => {
+    const handleLogout = () => {
+      sessionStorage.removeItem("isAuthenticated");
+      sessionStorage.removeItem("currentUser");
+      router.push("/");
+    };
+
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        setShowScrambled(true);
+        handleLogout();
       }
     };
 
-    const handleBlur = () => {
-      setShowScrambled(true);
-    };
-
     window.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
+    window.addEventListener('blur', handleLogout);
 
     return () => {
       window.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('blur', handleLogout);
     };
-  }, []);
+  }, [router]);
 
   const handleEmojiClick = (emoji: string) => {
     setInput(prev => prev + emoji);
