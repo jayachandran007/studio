@@ -9,7 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { KeyRound } from "lucide-react";
 
-const CORRECT_PASSCODE = "sweetsex";
+const PASSCODES: Record<string, string> = {
+  "passcode1": "user1",
+  "passcode2": "user2"
+};
 
 export default function LoginPage() {
   const [passcode, setPasscode] = useState("");
@@ -21,9 +24,11 @@ export default function LoginPage() {
     setIsLoading(true);
     // Simulate a network request
     setTimeout(() => {
-      if (passcode === CORRECT_PASSCODE) {
+      const user = PASSCODES[passcode];
+      if (user) {
         // In a real app, you'd use a more secure session management method
         sessionStorage.setItem("isAuthenticated", "true");
+        sessionStorage.setItem("currentUser", user);
         router.push("/chat");
       } else {
         toast({
@@ -52,7 +57,7 @@ export default function LoginPage() {
           </div>
           <CardTitle>Enter Passcode</CardTitle>
           <CardDescription>
-            Please enter the passcode to access AgentChat.
+            Please enter your passcode to access the chat.
           </CardDescription>
         </CardHeader>
         <CardContent>
