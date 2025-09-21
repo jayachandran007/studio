@@ -44,6 +44,7 @@ export default function ChatPage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isPickingFile = useRef(false);
 
   useEffect(() => {
     const isAuthenticated = sessionStorage.getItem("isAuthenticated");
@@ -79,6 +80,9 @@ export default function ChatPage() {
 
   useEffect(() => {
     const handleLogout = () => {
+      if (isPickingFile.current) {
+        return;
+      }
       sessionStorage.removeItem("isAuthenticated");
       sessionStorage.removeItem("currentUser");
       router.push("/");
@@ -110,6 +114,12 @@ export default function ChatPage() {
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
     }
+    isPickingFile.current = false;
+  };
+
+  const handleAttachClick = () => {
+    isPickingFile.current = true;
+    fileInputRef.current?.click();
   };
 
   const removeImage = () => {
@@ -283,7 +293,7 @@ export default function ChatPage() {
             className="hidden"
             accept="image/*"
           />
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => fileInputRef.current?.click()}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handleAttachClick}>
               <Paperclip className="h-4 w-4" />
               <span className="sr-only">Attach Image</span>
           </Button>
