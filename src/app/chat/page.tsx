@@ -28,40 +28,28 @@ interface Message {
   imageUrl?: string;
 }
 
-const scrambleMessageLocal = (message: string): string => {
+const scrambleMessage = (message: string): string => {
   if (!message) return "";
-  const emojiRegex = /([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g;
-  const messageWithoutEmojis = message.replace(emojiRegex, '');
-
-  return messageWithoutEmojis
-    .split('')
-    .map(char => {
-      const charCode = char.charCodeAt(0);
-      if (char >= 'a' && char <= 'z') {
-        return String.fromCharCode(((charCode - 97 + 1) % 26) + 97);
-      } else if (char >= 'A' && char <= 'Z') {
-        return String.fromCharCode(((charCode - 65 + 1) % 26) + 65);
-      }
-      return char;
-    })
-    .join('');
+  try {
+    // Use btoa for robust scrambling of any character, including emojis
+    return btoa(unescape(encodeURIComponent(message)));
+  } catch (error) {
+    console.error("Error scrambling message:", error);
+    return message; // Fallback to original message on error
+  }
 };
 
-const unscrambleMessageLocal = (scrambledMessage: string): string => {
+const unscrambleMessage = (scrambledMessage: string): string => {
   if (!scrambledMessage) return "";
-  return scrambledMessage
-    .split('')
-    .map(char => {
-      const charCode = char.charCodeAt(0);
-      if (char >= 'a' && char <= 'z') {
-        return String.fromCharCode(((charCode - 97 - 1 + 26) % 26) + 97);
-      } else if (char >= 'A' && char <= 'Z') {
-        return String.fromCharCode(((charCode - 65 - 1 + 26) % 26) + 65);
-      }
-      return char;
-    })
-    .join('');
+  try {
+    // Use atob to decode the Base64 string
+    return decodeURIComponent(escape(atob(scrambledMessage)));
+  } catch (error) {
+    console.error("Error unscrambling message:", error);
+    return scrambledMessage; // Fallback to scrambled message on error
+  }
 };
+
 
 export default function ChatPage() {
   const router = useRouter();
@@ -201,7 +189,7 @@ export default function ChatPage() {
         const newUnscrambledMessages: Record<string, string> = {};
         for (const message of messages) {
           if (!unscrambledMessages[message.id] && message.scrambledText) {
-            const unscrambledText = unscrambleMessageLocal(message.scrambledText);
+            const unscrambledText = unscrambleMessage(message.scrambledText);
             newUnscrambledMessages[message.id] = unscrambledText;
           }
         }
@@ -245,20 +233,14 @@ export default function ChatPage() {
     let scrambledMessage = "";
 
     try {
-      console.log("1. Starting handleSend");
       if (imageFileToSend) {
-        console.log("2. Image file exists, preparing to upload.");
         const storageRef = ref(storage, `chat_images/${Date.now()}_${imageFileToSend.name}`);
-        console.log("3. Created storage reference:", storageRef.fullPath);
         await uploadBytes(storageRef, imageFileToSend);
-        console.log("4. Upload complete.");
         imageUrl = await getDownloadURL(storageRef);
-        console.log("5. Got download URL:", imageUrl);
       }
 
       if (messageToSend) {
-        scrambledMessage = scrambleMessageLocal(messageToSend);
-         console.log("6. Scrambled message:", scrambledMessage);
+        scrambledMessage = scrambleMessage(messageToSend);
       }
 
       const messageToStore: Omit<Message, 'id'> = {
@@ -268,9 +250,7 @@ export default function ChatPage() {
         ...(imageUrl && { imageUrl }),
       };
       
-      console.log("7. Preparing to add document to Firestore:", messageToStore);
       await addDoc(collection(db, "messages"), messageToStore);
-      console.log("8. Document added to Firestore successfully.");
       
     } catch (error: any) {
       console.error("ERROR SENDING MESSAGE:", error);
@@ -292,7 +272,6 @@ export default function ChatPage() {
     } finally {
       setIsSending(false);
       textareaRef.current?.focus();
-      console.log("9. handleSend finished.");
     }
   };
   
@@ -455,5 +434,3 @@ export default function ChatPage() {
     </div>
   );
 }
-
-    
