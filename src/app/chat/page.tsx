@@ -60,7 +60,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isSending, setIsSending] = useState(isSending);
+  const [isSending, setIsSending] = useState(false);
   const [showScrambled, setShowScrambled] = useState(true);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const { toast } = useToast();
@@ -518,5 +518,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    
