@@ -33,20 +33,23 @@ interface Message {
 const scrambleMessage = (message: string): string => {
   if (!message) return "";
   try {
+    // Handles Unicode characters correctly
     return btoa(unescape(encodeURIComponent(message)));
   } catch (error) {
     console.error("Error scrambling message:", error);
-    return message;
+    return message; // Fallback to original message
   }
 };
 
 const unscrambleMessage = (scrambledMessage: string): string => {
   if (!scrambledMessage) return "";
   try {
+    // Handles Unicode characters correctly
     return decodeURIComponent(escape(atob(scrambledMessage)));
   } catch (error) {
     console.error("Error unscrambling message:", error);
-    return scrambledMessage;
+    // This might happen if the message was not scrambled correctly (e.g., old data)
+    return scrambledMessage; // Fallback to scrambled message
   }
 };
 
@@ -159,7 +162,7 @@ export default function ChatPage() {
 
   const handleStartEdit = (message: Message) => {
     setEditingMessageId(message.id);
-    setEditingText(showScrambled ? unscrambleMessage(message.scrambledText) : getMessageContent(message));
+    setEditingText(unscrambleMessage(message.scrambledText));
   };
 
   const handleCancelEdit = () => {
@@ -285,7 +288,7 @@ export default function ChatPage() {
     removeImage();
 
     let imageUrl: string | undefined = undefined;
-    let scrambledMessage = "";
+    let scrambledMessageText = "";
 
     try {
       if (imageFileToSend) {
@@ -295,11 +298,11 @@ export default function ChatPage() {
       }
 
       if (messageToSend) {
-        scrambledMessage = scrambleMessage(messageToSend);
+        scrambledMessageText = scrambleMessage(messageToSend);
       }
 
       const messageToStore: Omit<Message, 'id'> = {
-        scrambledText: scrambledMessage,
+        scrambledText: scrambledMessageText,
         sender: currentUser,
         createdAt: serverTimestamp(),
         ...(imageUrl && { imageUrl }),
