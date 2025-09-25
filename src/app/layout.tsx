@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'CipherChat',
+  title: 'news',
   description: 'A personal chat application with message scrambling',
 };
 
