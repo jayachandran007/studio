@@ -503,5 +503,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    
