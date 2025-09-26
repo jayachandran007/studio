@@ -64,7 +64,6 @@ export default function ChatPage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isPickingFile = useRef(false);
 
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
@@ -128,18 +127,10 @@ export default function ChatPage() {
       }
     };
     
-    const handleBlur = () => {
-        if (!isPickingFile.current) {
-          handleLogout();
-        }
-    }
-    
     window.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
 
     return () => {
       window.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
     };
   }, [handleLogout]);
 
@@ -204,12 +195,7 @@ export default function ChatPage() {
   };
 
   const handleAttachClick = () => {
-    isPickingFile.current = true;
     fileInputRef.current?.click();
-    // A brief timeout to allow the file picker to open before re-enabling the blur listener
-    setTimeout(() => {
-        isPickingFile.current = false;
-    }, 1000);
   };
 
   const removeImage = () => {
@@ -319,7 +305,10 @@ export default function ChatPage() {
 
   return (
     <>
-      <div className="flex h-screen w-full flex-col bg-background">
+      <div 
+        className="flex h-screen w-full flex-col bg-background"
+        onMouseLeave={handleLogout}
+      >
         <header className="flex h-16 items-center justify-center border-b bg-card px-4 shrink-0">
           <h1 className="text-xl font-semibold">AgentChat</h1>
         </header>
@@ -503,3 +492,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
