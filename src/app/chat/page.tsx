@@ -33,6 +33,7 @@ interface Message {
 const scrambleMessage = (message: string): string => {
   if (!message) return "";
   try {
+    // Using Base64 encoding for a simple, reversible scramble
     return btoa(unescape(encodeURIComponent(message)));
   } catch (error) {
     console.error("Error scrambling message:", error);
@@ -43,9 +44,11 @@ const scrambleMessage = (message: string): string => {
 const unscrambleMessage = (scrambledMessage: string): string => {
   if (!scrambledMessage) return "";
   try {
+    // Using Base64 decoding to unscramble
     return decodeURIComponent(escape(atob(scrambledMessage)));
   } catch (error) {
     console.error("Error unscrambling message:", error);
+    // If unscrambling fails, return the original scrambled text
     return scrambledMessage;
   }
 };
@@ -295,6 +298,21 @@ export default function ChatPage() {
       handleUpdateMessage();
     }
   };
+  
+  const handlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = event.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          event.preventDefault();
+          setImageFile(file);
+          setImagePreview(URL.createObjectURL(file));
+          break;
+        }
+      }
+    }
+  };
 
   const getMessageContent = (message: Message) => {
     if (showScrambled) {
@@ -457,6 +475,7 @@ export default function ChatPage() {
               value={input}
               onChange={handleInputChange}
               onKeyDown={handleKeyPress}
+              onPaste={handlePaste}
               disabled={isSending}
               className="flex-1 rounded-2xl bg-muted resize-none max-h-40 overflow-y-auto"
               rows={1}
@@ -492,5 +511,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    
