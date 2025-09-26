@@ -13,10 +13,46 @@ const PASSCODES: Record<string, string> = {
 };
 const MAX_PASSCODE_LENGTH = 10; // A reasonable max length for passcodes
 
+const contentSets = [
+  {
+    title: "The Nature of Privacy",
+    paragraphs: [
+      "In an era of pervasive connectivity, the concept of a private space has become increasingly abstract. What was once a physical boundary is now a complex negotiation of digital permissions and algorithmic trust.",
+      "True privacy is not about having something to hide; it is about having the autonomy to choose what to share and with whom. It's the silent, unwritten agreement that our thoughts, our conversations, and our identities are our own to control. Yet, we leave digital footprints with every interaction, every search, every message sent into the void. These fragments, seemingly insignificant on their own, are collected, aggregated, and analyzed, painting a portrait of us that is often more detailed than we realize.",
+      "The challenge, then, is not to disappear completely, but to navigate this landscape with intention. To build our own sanctuaries, not with walls of brick, but with layers of encryption and mindful discretion. A space where communication is secure not because it is locked away, but because it is protected by a shared understanding of its value. This is the new frontier of personal liberty."
+    ],
+    author: "the Scribe"
+  },
+  {
+    title: "On Digital Echoes",
+    paragraphs: [
+      "Every character we type, every image we share, becomes a digital echo—a faint but permanent vibration in the vast network of servers that constitutes modern memory. These echoes outlive our intentions, carrying fragments of our past into unforeseen futures.",
+      "We often speak of the digital world as being separate from the 'real' one, a place of avatars and aliases. Yet, the emotions carried through these networks are real. The connections formed, however fleeting, are real. The data we generate is a direct reflection of our thoughts, desires, and fears. This digital doppelgänger is not a shadow; it is a mirror, reflecting a version of ourselves we may not always recognize but cannot disown.",
+      "To exist online is to be in a constant state of performance. We curate our lives, presenting a polished version for public consumption. But what of the unedited drafts? The hesitations, the deleted words, the closed tabs? These moments of unfiltered thought, though unseen, are the true architecture of our digital consciousness. They are the silent spaces between the echoes where our authentic selves reside."
+    ],
+    author: "the Archivist"
+  },
+  {
+    title: "The Illusion of Anonymity",
+    paragraphs: [
+      "Anonymity in the digital age is a comforting illusion, a thin veil draped over a network designed for identification. We adopt usernames and avatars, believing they shield us, but our patterns of behavior are as unique as a fingerprint.",
+      "The data points we shed—keystroke timing, linguistic choices, browsing habits—form a constellation that points directly back to us. True anonymity would require not just a mask, but a complete erasure of habit and personality, an impossible feat for any thinking being. The machine, in its relentless pursuit of patterns, always finds the ghost.",
+      "Perhaps the goal should not be to become invisible, but to be seen on our own terms. To understand that every action is a signature, and to write that signature with purpose. In a world where every whisper is recorded, the only power we have left is to choose our words carefully, knowing they will be etched into the permanent record of the digital age. Authenticity, not anonymity, may be our last form of defiance."
+    ],
+    author: "the Cypher"
+  }
+];
+
 export default function DisguisedLoginPage() {
   const [input, setInput] = useState("");
   const router = useRouter();
   const hiddenInputRef = useRef<HTMLInputElement>(null);
+  const [content, setContent] = useState(contentSets[0]); // Default to first content set
+
+  useEffect(() => {
+    // Randomly select content on the client side to avoid hydration mismatch
+    setContent(contentSets[Math.floor(Math.random() * contentSets.length)]);
+  }, []);
 
   const handleLogin = useCallback(async (userIdentifier: string) => {
     try {
@@ -78,20 +114,20 @@ export default function DisguisedLoginPage() {
             <Feather className="h-5 w-5" />
             <p className="text-sm">Musings on Digital Ephemera</p>
         </div>
-        <h1 className="text-4xl font-bold mb-4 text-foreground">The Nature of Privacy</h1>
+        <h1 className="text-4xl font-bold mb-4 text-foreground">{content.title}</h1>
         <p className="text-lg text-muted-foreground mb-8">
-          In an era of pervasive connectivity, the concept of a private space has become increasingly abstract. What was once a physical boundary is now a complex negotiation of digital permissions and algorithmic trust.
+          {content.paragraphs[0]}
         </p>
         <div className="space-y-6 text-foreground/90">
             <p>
-                True privacy is not about having something to hide; it is about having the autonomy to choose what to share and with whom. It's the silent, unwritten agreement that our thoughts, our conversations, and our identities are our own to control. Yet, we leave digital footprints with every interaction, every search, every message sent into the void. These fragments, seemingly insignificant on their own, are collected, aggregated, and analyzed, painting a portrait of us that is often more detailed than we realize.
+                {content.paragraphs[1]}
             </p>
             <p>
-                The challenge, then, is not to disappear completely, but to navigate this landscape with intention. To build our own sanctuaries, not with walls of brick, but with layers of encryption and mindful discretion. A space where communication is secure not because it is locked away, but because it is protected by a shared understanding of its value. This is the new frontier of personal liberty.
+                {content.paragraphs[2]}
             </p>
         </div>
         <div className="mt-12 border-t border-border pt-4 text-center text-sm text-muted-foreground">
-            <p>A thought by the Scribe.</p>
+            <p>A thought by {content.author}.</p>
         </div>
         
         {/* Hidden form and input for mobile keyboard support */}
