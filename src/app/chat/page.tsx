@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, deleteDoc, updateDoc, limit, getDocs, startAfter, QueryDocumentSnapshot } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -21,6 +21,7 @@ import { Loader2, Send, User, Smile, Paperclip, X, MoreHorizontal, Trash2, Penci
 import { cn } from "@/lib/utils";
 
 const EMOJIS = ['😀', '😂', '😍', '🤔', '👍', '❤️', '🎉', '🔥', '🚀', '💯', '🙏', '🤷‍♂️', '🤧', '🥰'];
+const MESSAGES_PER_PAGE = 25;
 
 interface Message {
   id: string;
@@ -33,7 +34,6 @@ interface Message {
 const scrambleMessage = (message: string): string => {
   if (!message) return "";
   try {
-    // Using Base64 encoding for a simple, reversible scramble
     return btoa(unescape(encodeURIComponent(message)));
   } catch (error) {
     console.error("Error scrambling message:", error);
@@ -44,15 +44,12 @@ const scrambleMessage = (message: string): string => {
 const unscrambleMessage = (scrambledMessage: string): string => {
   if (!scrambledMessage) return "";
   try {
-    // Using Base64 decoding to unscramble
     return decodeURIComponent(escape(atob(scrambledMessage)));
   } catch (error) {
     console.error("Error unscrambling message:", error);
-    // If unscrambling fails, return the original scrambled text
     return scrambledMessage;
   }
 };
-
 
 export default function ChatPage() {
   const router = useRouter();
@@ -65,12 +62,18 @@ export default function ChatPage() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  
+  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -93,28 +96,83 @@ export default function ChatPage() {
   
   useEffect(() => {
     if (!currentUser) return;
-    const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
+    
+    // Subscribe to the most recent messages for real-time updates
+    const q = query(
+      collection(db, "messages"), 
+      orderBy("createdAt", "desc"), 
+      limit(MESSAGES_PER_PAGE)
+    );
+
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const messagesData: Message[] = [];
       querySnapshot.forEach((doc) => {
         messagesData.push({ id: doc.id, ...doc.data() } as Message);
       });
-      setMessages(messagesData);
+      
+      const newLastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+      setLastVisible(newLastVisible);
+      setMessages(messagesData.reverse());
+      setHasMoreMessages(querySnapshot.docs.length === MESSAGES_PER_PAGE);
+
+      // Scroll to bottom only on initial load or new messages
+      setTimeout(() => {
+        const viewport = scrollViewportRef.current;
+        if (viewport) {
+          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'auto' });
+        }
+      }, 100);
     });
+
     return () => unsubscribe();
   }, [currentUser]);
 
-  useEffect(() => {
-    if (scrollAreaRef.current) {
-      const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        viewport.scrollTo({
-          top: viewport.scrollHeight,
-          behavior: 'smooth',
-        });
-      }
+  const loadMoreMessages = useCallback(async () => {
+    if (loadingMore || !hasMoreMessages || !lastVisible) return;
+
+    setLoadingMore(true);
+    
+    const q = query(
+      collection(db, "messages"),
+      orderBy("createdAt", "desc"),
+      startAfter(lastVisible),
+      limit(MESSAGES_PER_PAGE)
+    );
+
+    const querySnapshot = await getDocs(q);
+    const oldMessagesData: Message[] = [];
+    querySnapshot.forEach((doc) => {
+      oldMessagesData.push({ id: doc.id, ...doc.data() } as Message);
+    });
+
+    const newLastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+    setLastVisible(newLastVisible);
+    setHasMoreMessages(querySnapshot.docs.length === MESSAGES_PER_PAGE);
+
+    if (oldMessagesData.length > 0) {
+      // Keep track of old scroll height to maintain position
+      const viewport = scrollViewportRef.current;
+      const oldScrollHeight = viewport?.scrollHeight || 0;
+      
+      setMessages(prev => [...oldMessagesData.reverse(), ...prev]);
+
+      // Restore scroll position
+      requestAnimationFrame(() => {
+        if(viewport) {
+          viewport.scrollTop = viewport.scrollHeight - oldScrollHeight;
+        }
+      });
     }
-  }, [messages, editingMessageId]);
+
+    setLoadingMore(false);
+  }, [lastVisible, loadingMore, hasMoreMessages]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (e.currentTarget.scrollTop === 0 && !loadingMore && hasMoreMessages) {
+      loadMoreMessages();
+    }
+  };
+
 
   const handleLogout = useCallback(async () => {
     sessionStorage.removeItem("isAuthenticated");
@@ -255,6 +313,11 @@ export default function ChatPage() {
       
       await addDoc(collection(db, "messages"), messageToStore);
       
+      const viewport = scrollViewportRef.current;
+      if (viewport) {
+        viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+      }
+
     } catch (error: any) {
       console.error("ERROR SENDING MESSAGE:", error);
       let description = "Could not send message. Please try again.";
@@ -331,8 +394,9 @@ export default function ChatPage() {
           <h1 className="text-xl font-semibold">AgentChat</h1>
         </header>
         <main className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full" ref={scrollAreaRef}>
-            <div className="p-4 md:p-6">
+          <ScrollArea className="h-full" ref={scrollAreaRef} onScroll={handleScroll}>
+            <div className="p-4 md:p-6" ref={scrollViewportRef}>
+                {loadingMore && <div className="flex justify-center p-2"><Loader2 className="h-5 w-5 animate-spin" /></div>}
               <div className="flex flex-col gap-2">
                 {messages.map((message) => (
                   <div
@@ -511,3 +575,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
