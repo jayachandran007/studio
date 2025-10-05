@@ -52,6 +52,33 @@ const unscrambleMessage = (scrambledMessage: string): string => {
   }
 };
 
+const LinkifyText = ({ text }: { text: string }) => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+
+  return (
+    <p className="whitespace-pre-wrap">
+      {parts.map((part, index) => {
+        if (part.match(urlRegex)) {
+          return (
+            <a
+              key={index}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:underline"
+            >
+              {part}
+            </a>
+          );
+        }
+        return part;
+      })}
+    </p>
+  );
+};
+
+
 export default function ChatPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -486,7 +513,7 @@ export default function ChatPage() {
                           </div>
                         </div>
                       ) : (
-                        message.scrambledText && <p className="whitespace-pre-wrap">{getMessageContent(message)}</p>
+                        message.scrambledText && <LinkifyText text={getMessageContent(message)} />
                       )}
                     </div>
                      {message.sender === currentUser && (
@@ -588,7 +615,9 @@ export default function ChatPage() {
             This action cannot be undone. This will permanently delete your message.
           </AlertDialogDescription>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeletingMessageId(null)}>Cancel</AlertDialogAlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeletingMessageId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteMessage}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
