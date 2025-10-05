@@ -489,7 +489,7 @@ export default function ChatPage() {
                               alt="Chat image"
                               width={300}
                               height={200}
-                              className="rounded-xl object-cover w-full h-auto" 
+                              className="rounded-xl object-cover" 
                             />
                         </div>
                       )}
