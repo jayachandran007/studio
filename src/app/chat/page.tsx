@@ -17,7 +17,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, User, Smile, Paperclip, X, MoreHorizontal, Trash2, Pencil } from "lucide-react";
+import { Loader2, Send, User, Smile, Paperclip, X, MoreHorizontal, Trash2, Pencil, Wand2 } from "lucide-react";
+import { suggestScrambleMethods } from "@/ai/flows/suggest-scramble-methods";
 
 import { cn } from "@/lib/utils";
 
@@ -87,6 +88,7 @@ export default function ChatPage() {
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false);
   const [showScrambled, setShowScrambled] = useState(true);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const { toast } = useToast();
@@ -98,6 +100,14 @@ export default function ChatPage() {
   const [editingText, setEditingText] = useState("");
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   
+  const scrollToBottom = useCallback(() => {
+    const viewport = scrollViewportRef.current;
+    if (viewport) {
+      setTimeout(() => {
+        viewport.scrollTop = viewport.scrollHeight;
+      }, 0);
+    }
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -136,11 +146,8 @@ export default function ChatPage() {
   }, [currentUser]);
 
   useEffect(() => {
-    const viewport = scrollViewportRef.current;
-    if (viewport) {
-      viewport.scrollTop = viewport.scrollHeight;
-    }
-  }, [messages]);
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
 
   const handleLogout = useCallback(async () => {
@@ -296,10 +303,7 @@ export default function ChatPage() {
       
       await addDoc(collection(db, "messages"), messageToStore);
       
-      const viewport = scrollViewportRef.current;
-      if (viewport) {
-        viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
-      }
+      scrollToBottom();
 
     } catch (error: any) {
       console.error("ERROR SENDING MESSAGE:", error);
@@ -358,6 +362,48 @@ export default function ChatPage() {
           break;
         }
       }
+    }
+  };
+
+  const handleSuggestScramble = async () => {
+    const trimmedInput = input.trim();
+    if (!trimmedInput) {
+      toast({
+        title: "Empty Message",
+        description: "Please type a message to get scramble suggestions.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsSuggesting(true);
+    try {
+      const result = await suggestScrambleMethods({ message: trimmedInput });
+      if (result.suggestions && result.suggestions.length > 0) {
+        const randomIndex = Math.floor(Math.random() * result.suggestions.length);
+        const suggestion = result.suggestions[randomIndex];
+        setInput(suggestion);
+        toast({
+          title: "AI Suggestion Applied",
+          description: `The AI suggested a new way to scramble your message.`
+        });
+      } else {
+        toast({
+          title: "No Suggestions",
+          description: "The AI couldn't come up with a suggestion this time.",
+          variant: "destructive"
+        });
+      }
+    } catch(e) {
+      console.error("Error getting scramble suggestion:", e);
+      toast({
+        title: "AI Error",
+        description: "There was an error communicating with the AI.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSuggesting(false);
+      textareaRef.current?.focus();
     }
   };
 
@@ -433,7 +479,9 @@ export default function ChatPage() {
                                 alt="Chat image"
                                 width={300}
                                 height={200}
-                                className="rounded-xl object-cover" 
+                                className="rounded-xl object-cover"
+                                onLoad={scrollToBottom}
+                                unoptimized
                               />
                           </div>
                         )}
@@ -442,6 +490,7 @@ export default function ChatPage() {
                             src={message.mediaUrl} 
                             controls
                             className="rounded-xl mb-2 w-full max-w-[300px]"
+                            onLoadedData={scrollToBottom}
                           />
                         )}
                         {editingMessageId === message.id ? (
@@ -529,6 +578,10 @@ export default function ChatPage() {
                   </div>
                 </PopoverContent>
               </Popover>
+              <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0" onClick={handleSuggestScramble} disabled={isSuggesting}>
+                {isSuggesting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
+                <span className="sr-only">Scramble with AI</span>
+              </Button>
             </div>
             <Textarea
               ref={textareaRef}
@@ -537,7 +590,7 @@ export default function ChatPage() {
               onChange={handleInputChange}
               onKeyDown={handleKeyPress}
               onPaste={handlePaste}
-              disabled={isSending}
+              disabled={isSending || isSuggesting}
               className="flex-1 rounded-2xl bg-muted resize-none max-h-40 overflow-y-auto"
               rows={1}
             />
@@ -546,7 +599,7 @@ export default function ChatPage() {
               size="icon"
               className="h-10 w-10 shrink-0 rounded-full bg-primary text-primary-foreground"
               onClick={handleSend}
-              disabled={isSending || (!input.trim() && !mediaFile)}
+              disabled={isSending || isSuggesting || (!input.trim() && !mediaFile)}
             >
               {isSending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
               <span className="sr-only">Send</span>
