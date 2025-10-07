@@ -192,11 +192,21 @@ export default function ChatPage() {
     setLoadingMore(false);
   }, [lastVisible, loadingMore, hasMoreMessages]);
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (e.currentTarget.scrollTop === 0 && !loadingMore && hasMoreMessages) {
-      loadMoreMessages();
-    }
-  };
+  useEffect(() => {
+    const viewport = scrollViewportRef.current;
+    if (!viewport) return;
+
+    const handleScrollEvent = (event: Event) => {
+        if ((event.target as HTMLDivElement).scrollTop === 0 && !loadingMore && hasMoreMessages) {
+            loadMoreMessages();
+        }
+    };
+    
+    viewport.addEventListener('scroll', handleScrollEvent);
+
+    return () => viewport.removeEventListener('scroll', handleScrollEvent);
+
+  }, [loadMoreMessages, loadingMore, hasMoreMessages]);
 
 
   const handleLogout = useCallback(async () => {
@@ -434,7 +444,7 @@ export default function ChatPage() {
           <h1 className="text-xl font-semibold">AgentChat</h1>
         </header>
         <main className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full" onScroll={handleScroll}>
+          <ScrollArea className="h-full">
              <ScrollAreaPrimitive.Viewport ref={scrollViewportRef} className="h-full w-full rounded-[inherit]">
               <div className="p-4 md:p-6">
                   {loadingMore && <div className="flex justify-center p-2"><Loader2 className="h-5 w-5 animate-spin" /></div>}
@@ -629,3 +639,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
