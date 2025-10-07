@@ -196,17 +196,15 @@ export default function ChatPage() {
     const viewport = scrollViewportRef.current;
     if (!viewport) return;
 
-    const handleScrollEvent = (event: Event) => {
-        if ((event.target as HTMLDivElement).scrollTop === 0 && !loadingMore && hasMoreMessages) {
+    const handleScrollEvent = () => {
+        if (viewport.scrollTop === 0 && !loadingMore && hasMoreMessages) {
             loadMoreMessages();
         }
     };
     
     viewport.addEventListener('scroll', handleScrollEvent);
-
     return () => viewport.removeEventListener('scroll', handleScrollEvent);
-
-  }, [loadMoreMessages, loadingMore, hasMoreMessages]);
+  }, [loadMoreMessages, hasMoreMessages, loadingMore]);
 
 
   const handleLogout = useCallback(async () => {
