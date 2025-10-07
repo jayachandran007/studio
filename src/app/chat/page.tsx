@@ -434,8 +434,8 @@ export default function ChatPage() {
           <h1 className="text-xl font-semibold">AgentChat</h1>
         </header>
         <main className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-             <ScrollAreaPrimitive.Viewport ref={scrollViewportRef} className="h-full w-full rounded-[inherit]" onScroll={handleScroll}>
+          <ScrollArea className="h-full" onScroll={handleScroll}>
+             <ScrollAreaPrimitive.Viewport ref={scrollViewportRef} className="h-full w-full rounded-[inherit]">
               <div className="p-4 md:p-6">
                   {loadingMore && <div className="flex justify-center p-2"><Loader2 className="h-5 w-5 animate-spin" /></div>}
                 <div className="flex flex-col gap-2">
@@ -629,5 +629,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    
