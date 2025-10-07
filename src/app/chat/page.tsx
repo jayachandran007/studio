@@ -607,7 +607,6 @@ export default function ChatPage() {
           </div>
         </footer>
       </div>
-
       <AlertDialog open={!!deletingMessageId} onOpenChange={(open) => !open && setDeletingMessageId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
