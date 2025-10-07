@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, deleteDoc, updateDoc, limit, getDocs, startAfter, QueryDocumentSnapshot } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -22,7 +22,6 @@ import { Loader2, Send, User, Smile, Paperclip, X, MoreHorizontal, Trash2, Penci
 import { cn } from "@/lib/utils";
 
 const EMOJIS = ['😀', '😂', '😍', '🤔', '👍', '❤️', '🎉', '🔥', '🚀', '💯', '🙏', '🤷‍♂️', '🤧', '🥰'];
-const MESSAGES_PER_PAGE = 25;
 
 interface Message {
   id: string;
@@ -99,10 +98,6 @@ export default function ChatPage() {
   const [editingText, setEditingText] = useState("");
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   
-  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMoreMessages, setHasMoreMessages] = useState(true);
-
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -126,11 +121,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (!currentUser) return;
     
-    const q = query(
-      collection(db, "messages"), 
-      orderBy("createdAt", "desc"), 
-      limit(MESSAGES_PER_PAGE)
-    );
+    const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const messagesData: Message[] = [];
@@ -138,10 +129,7 @@ export default function ChatPage() {
         messagesData.push({ id: doc.id, ...doc.data() } as Message);
       });
       
-      const newLastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
-      setLastVisible(newLastVisible);
-      setMessages(messagesData.reverse());
-      setHasMoreMessages(querySnapshot.docs.length === MESSAGES_PER_PAGE);
+      setMessages(messagesData);
 
       setTimeout(() => {
         const viewport = scrollViewportRef.current;
@@ -154,57 +142,12 @@ export default function ChatPage() {
     return () => unsubscribe();
   }, [currentUser]);
 
-  const loadMoreMessages = useCallback(async () => {
-    if (loadingMore || !hasMoreMessages || !lastVisible) return;
-
-    setLoadingMore(true);
-    
-    const q = query(
-      collection(db, "messages"),
-      orderBy("createdAt", "desc"),
-      startAfter(lastVisible),
-      limit(MESSAGES_PER_PAGE)
-    );
-
-    const querySnapshot = await getDocs(q);
-    const oldMessagesData: Message[] = [];
-    querySnapshot.forEach((doc) => {
-      oldMessagesData.push({ id: doc.id, ...doc.data() } as Message);
-    });
-
-    const newLastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
-    setLastVisible(newLastVisible);
-    setHasMoreMessages(querySnapshot.docs.length === MESSAGES_PER_PAGE);
-
-    if (oldMessagesData.length > 0) {
-      const viewport = scrollViewportRef.current;
-      const oldScrollHeight = viewport?.scrollHeight || 0;
-      
-      setMessages(prev => [...oldMessagesData.reverse(), ...prev]);
-
-      requestAnimationFrame(() => {
-        if(viewport) {
-          viewport.scrollTop = viewport.scrollHeight - oldScrollHeight;
-        }
-      });
-    }
-
-    setLoadingMore(false);
-  }, [lastVisible, loadingMore, hasMoreMessages]);
-
   useEffect(() => {
     const viewport = scrollViewportRef.current;
-    if (!viewport) return;
-
-    const handleScrollEvent = () => {
-        if (viewport.scrollTop === 0 && !loadingMore && hasMoreMessages) {
-            loadMoreMessages();
-        }
-    };
-    
-    viewport.addEventListener('scroll', handleScrollEvent);
-    return () => viewport.removeEventListener('scroll', handleScrollEvent);
-  }, [loadMoreMessages, hasMoreMessages, loadingMore]);
+    if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+    }
+  }, [messages]);
 
 
   const handleLogout = useCallback(async () => {
@@ -445,7 +388,6 @@ export default function ChatPage() {
           <ScrollArea className="h-full">
              <ScrollAreaPrimitive.Viewport ref={scrollViewportRef} className="h-full w-full rounded-[inherit]">
               <div className="p-4 md:p-6">
-                  {loadingMore && <div className="flex justify-center p-2"><Loader2 className="h-5 w-5 animate-spin" /></div>}
                 <div className="flex flex-col gap-2">
                   {messages.map((message) => (
                     <div
@@ -637,5 +579,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    
