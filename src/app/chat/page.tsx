@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -12,8 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, User, Smile, Paperclip, X } from "lucide-react";
+import { Loader2, Send, User, Smile, Paperclip, X, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,8 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isPickingFile = useRef(false);
 
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+
   useEffect(() => {
     const isAuthenticated = sessionStorage.getItem("isAuthenticated");
     const user = sessionStorage.getItem("currentUser");
@@ -68,15 +71,22 @@ export default function ChatPage() {
     return () => unsubscribe();
   }, [currentUser]);
 
-  useEffect(() => {
+  const scrollToBottom = () => {
     const scrollArea = scrollAreaRef.current;
     if (scrollArea) {
       const viewport = scrollArea.querySelector('div[data-radix-scroll-area-viewport]');
       if (viewport) {
-        viewport.scrollTop = viewport.scrollHeight;
+        setTimeout(() => {
+          viewport.scrollTop = viewport.scrollHeight;
+        }, 0);
       }
     }
+  }
+
+  useEffect(() => {
+    scrollToBottom();
   }, [messages]);
+
 
   useEffect(() => {
     const handleLogout = () => {
@@ -217,6 +227,27 @@ export default function ChatPage() {
     }
   };
 
+  const handleDeleteMessage = async () => {
+    if (!deletingMessageId) return;
+
+    try {
+      await deleteDoc(doc(db, "messages", deletingMessageId));
+      toast({
+        title: "Success",
+        description: "Message deleted.",
+      });
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast({
+        title: "Error",
+        description: "Could not delete message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingMessageId(null);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !isSending) {
       handleSend();
@@ -224,6 +255,7 @@ export default function ChatPage() {
   };
 
   return (
+    <>
     <div className="flex h-screen w-full flex-col">
       <header className="flex h-16 items-center justify-center border-b bg-card px-4">
         <h1 className="text-xl font-bold">AgentChat</h1>
@@ -236,7 +268,7 @@ export default function ChatPage() {
                 <div
                   key={message.id}
                   className={cn(
-                    "flex items-start gap-3",
+                    "group flex items-start gap-3",
                     message.sender === currentUser ? "justify-end" : "justify-start"
                   )}
                 >
@@ -262,16 +294,28 @@ export default function ChatPage() {
                         width={300} 
                         height={200}
                         className="rounded-md mb-2 object-cover" 
+                        onLoad={scrollToBottom}
                       />
                     )}
                     <p>{showScrambled || !message.originalText ? message.scrambledText : message.originalText}</p>
                   </div>
                    {message.sender === currentUser && (
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>
-                         <User className="h-5 w-5" />
-                      </AvatarFallback>
-                    </Avatar>
+                    <>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setDeletingMessageId(message.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete message</span>
+                      </Button>
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback>
+                          <User className="h-5 w-5" />
+                        </AvatarFallback>
+                      </Avatar>
+                    </>
                   )}
                 </div>
               ))}
@@ -350,5 +394,20 @@ export default function ChatPage() {
         </div>
       </footer>
     </div>
+    <AlertDialog open={!!deletingMessageId} onOpenChange={(open) => !open && setDeletingMessageId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the message.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDeleteMessage}>Delete</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
