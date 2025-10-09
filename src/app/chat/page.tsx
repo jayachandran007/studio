@@ -25,12 +25,42 @@ const EMOJIS = ['😀', '😂', '😍', '🤔', '👍', '❤️', '🎉', '🔥'
 
 interface Message {
   id: string;
-  originalText?: string; // Original text is now optional and only for client-side display
   scrambledText: string;
   sender: string;
   createdAt: Timestamp;
   imageUrl?: string;
+  isEncoded: boolean;
 }
+
+// Simple Caesar cipher for encoding
+const encodeMessage = (text: string, shift: number = 1): string => {
+  return text
+    .split('')
+    .map(char => {
+      const charCode = char.charCodeAt(0);
+      // Simple check for basic ASCII printable characters to avoid scrambling symbols/emojis too much
+      if (charCode >= 32 && charCode <= 126) {
+        return String.fromCharCode(charCode + shift);
+      }
+      return char;
+    })
+    .join('');
+};
+
+// Simple Caesar cipher for decoding
+const decodeMessage = (text: string, shift: number = 1): string => {
+  return text
+    .split('')
+    .map(char => {
+      const charCode = char.charCodeAt(0);
+       if (charCode >= 32 + shift && charCode <= 126 + shift) {
+        return String.fromCharCode(charCode - shift);
+      }
+      return char;
+    })
+    .join('');
+};
+
 
 export default function ChatPage() {
   const router = useRouter();
@@ -65,7 +95,13 @@ export default function ChatPage() {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const messagesData: Message[] = [];
       querySnapshot.forEach((doc) => {
-        messagesData.push({ id: doc.id, ...doc.data() } as Message);
+        const data = doc.data();
+        messagesData.push({ 
+          id: doc.id, 
+          // For existing messages, isEncoded will be undefined, so we default to false.
+          isEncoded: data.isEncoded || false,
+          ...data 
+        } as Message);
       });
       setMessages(messagesData);
     });
@@ -171,6 +207,7 @@ export default function ChatPage() {
     setInput("");
     
     let imageUrl: string | undefined = undefined;
+    const tempId = Date.now().toString();
 
     try {
       if (imageFile) {
@@ -179,33 +216,35 @@ export default function ChatPage() {
         imageUrl = await getDownloadURL(storageRef);
       }
 
+      const encodedMessageText = encodeMessage(trimmedInput);
+
       // Temporarily add message to UI for immediate feedback
-      const tempId = Date.now().toString();
       const tempMessage: Message = {
         id: tempId,
-        originalText: trimmedInput,
-        scrambledText: trimmedInput, // Use original text for now
+        scrambledText: encodedMessageText,
         sender: currentUser,
         createdAt: Timestamp.now(),
+        isEncoded: true,
         ...(imageUrl && { imageUrl }),
       };
       setMessages(prev => [...prev, tempMessage]);
 
 
-      // Only store the scrambled message in Firestore
+      // Store the encoded message in Firestore
       const messageToStore = {
-        scrambledText: trimmedInput,
+        scrambledText: encodedMessageText,
         sender: currentUser,
         createdAt: serverTimestamp(),
+        isEncoded: true,
         ...(imageUrl && { imageUrl }),
       };
 
-      await addDoc(collection(db, "messages"), messageToStore);
+      const docRef = await addDoc(collection(db, "messages"), messageToStore);
       
-      // The onSnapshot listener will add the persisted message from Firestore
-      // It will replace the temp message if we filter like this, but might cause a flicker.
-      // For now, let's rely on onSnapshot to handle the final state.
-      // This temp message handling can be improved.
+      // The onSnapshot listener will eventually add the persisted message from Firestore.
+      // To avoid duplicates, we'll remove the temp message once the real one is likely in.
+      // A more robust solution might involve updating the temp message with the real ID.
+      setMessages(prev => prev.filter(m => m.id !== tempId));
       
       removeImage();
 
@@ -258,6 +297,17 @@ export default function ChatPage() {
       handleSend();
     }
   };
+  
+  const getMessageText = (message: Message) => {
+    if (showScrambled) {
+      return message.scrambledText;
+    }
+    if (message.isEncoded) {
+      return decodeMessage(message.scrambledText);
+    }
+    return message.scrambledText;
+  }
+
 
   return (
     <>
@@ -302,7 +352,7 @@ export default function ChatPage() {
                         onLoad={scrollToBottom}
                       />
                     )}
-                    <p>{showScrambled || !message.originalText ? message.scrambledText : message.originalText}</p>
+                    <p>{getMessageText(message)}</p>
                     {message.createdAt && (
                       <p className={cn("text-xs mt-1", message.sender === currentUser ? "text-primary-foreground/70" : "text-muted-foreground/70")}>
                         {format(message.createdAt.toDate(), "h:mm a")}
@@ -421,3 +471,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
