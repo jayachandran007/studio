@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Send, User, Smile, Paperclip, X, Trash2 } from "lucide-react";
+import { format } from "date-fns";
 
 import { cn } from "@/lib/utils";
 
@@ -27,7 +28,7 @@ interface Message {
   originalText?: string; // Original text is now optional and only for client-side display
   scrambledText: string;
   sender: string;
-  createdAt: any;
+  createdAt: Timestamp;
   imageUrl?: string;
 }
 
@@ -185,14 +186,14 @@ export default function ChatPage() {
         originalText: trimmedInput,
         scrambledText: trimmedInput, // Use original text for now
         sender: currentUser,
-        createdAt: new Date(),
+        createdAt: Timestamp.now(),
         ...(imageUrl && { imageUrl }),
       };
       setMessages(prev => [...prev, tempMessage]);
 
 
       // Only store the scrambled message in Firestore
-      const messageToStore: Omit<Message, 'id' | 'originalText'> = {
+      const messageToStore = {
         scrambledText: trimmedInput,
         sender: currentUser,
         createdAt: serverTimestamp(),
@@ -201,10 +202,11 @@ export default function ChatPage() {
 
       await addDoc(collection(db, "messages"), messageToStore);
       
-      // Remove the temporary message once the DB call is complete
       // The onSnapshot listener will add the persisted message from Firestore
-      setMessages(prev => prev.filter(m => m.id !== tempId));
-
+      // It will replace the temp message if we filter like this, but might cause a flicker.
+      // For now, let's rely on onSnapshot to handle the final state.
+      // This temp message handling can be improved.
+      
       removeImage();
 
     } catch (error: any) {
@@ -221,6 +223,9 @@ export default function ChatPage() {
         description: description,
         variant: "destructive",
       });
+      // remove temp message on failure
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+
     } finally {
       setIsSending(false);
       inputRef.current?.focus();
@@ -298,6 +303,11 @@ export default function ChatPage() {
                       />
                     )}
                     <p>{showScrambled || !message.originalText ? message.scrambledText : message.originalText}</p>
+                    {message.createdAt && (
+                      <p className={cn("text-xs mt-1", message.sender === currentUser ? "text-primary-foreground/70" : "text-muted-foreground/70")}>
+                        {format(message.createdAt.toDate(), "h:mm a")}
+                      </p>
+                    )}
                   </div>
                    {message.sender === currentUser && (
                     <>
