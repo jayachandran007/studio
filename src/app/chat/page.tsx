@@ -13,14 +13,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Send, User, Smile, Paperclip, X, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 import { cn } from "@/lib/utils";
-
-const SCRAMBLE_METHOD = "Letter substitution (A=B, B=C, etc.)";
 
 const EMOJIS = ['😀', '😂', '😍', '🤔', '👍', '❤️', '🎉', '🔥', '🚀', '💯', '🙏', '🤷‍♂️', '🤧', '🥰'];
 
@@ -70,7 +67,6 @@ export default function ChatPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const [showScrambled, setShowScrambled] = useState(false);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -135,7 +131,6 @@ export default function ChatPage() {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         handleLogout();
-        setShowScrambled(true);
       }
     };
     
@@ -195,13 +190,6 @@ export default function ChatPage() {
   const handleSend = async () => {
     const trimmedInput = input.trim();
     if ((!trimmedInput && !imageFile) || !currentUser) return;
-
-    if (trimmedInput.toLowerCase() === 'toggle' && !imageFile) {
-      setShowScrambled(prev => !prev);
-      setInput('');
-      inputRef.current?.focus();
-      return;
-    }
 
     setIsSending(true);
     setInput("");
@@ -298,9 +286,6 @@ export default function ChatPage() {
   };
   
   const getMessageText = (message: Message) => {
-    if (showScrambled) {
-      return message.scrambledText;
-    }
     if (message.isEncoded) {
       return decodeMessage(message.scrambledText);
     }
@@ -313,10 +298,6 @@ export default function ChatPage() {
       <div className="flex h-screen w-full flex-col bg-background">
         <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-4">
           <h1 className="text-xl font-bold">AgentChat</h1>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Scrambled</span>
-            <Switch checked={showScrambled} onCheckedChange={setShowScrambled} />
-          </div>
         </header>
         <main className="flex-1 overflow-hidden">
           <ScrollArea className="h-full" ref={scrollAreaRef}>
@@ -531,3 +512,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
