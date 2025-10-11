@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp } from "firebase/firestore";
@@ -107,11 +107,17 @@ export default function ChatPage() {
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
 
-  const handleLogout = () => {
+  const getDisplayName = useCallback((sender: string) => {
+    if (sender === 'user1') return 'Crazy_S';
+    if (sender === 'user2') return 'Cool_J';
+    return sender;
+  }, []);
+
+  const handleLogout = useCallback(() => {
     sessionStorage.removeItem("isAuthenticated");
     sessionStorage.removeItem("currentUser");
     router.push("/");
-  };
+  }, [router]);
   
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -136,7 +142,7 @@ export default function ChatPage() {
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleBlur);
     };
-  }, [router]);
+  }, [handleLogout]);
 
   useEffect(() => {
     const isAuthenticated = sessionStorage.getItem("isAuthenticated");
@@ -392,9 +398,9 @@ export default function ChatPage() {
                             selectedMessageId === message.id ? (message.sender === currentUser ? 'bg-blue-700' : 'bg-muted') : ''
                           )}
                         >
-                          {message.replyingToId && (
+                          {message.replyingToId && message.replyingToSender && (
                               <a href={`#${message.replyingToId}`} className="block mb-2 p-2 rounded-md bg-black/20 hover:bg-black/30 transition-colors">
-                                  <p className="text-xs font-semibold">{message.replyingToSender === currentUser ? 'You' : message.replyingToSender}</p>
+                                  <p className="text-xs font-semibold">{message.replyingToSender === currentUser ? 'You' : getDisplayName(message.replyingToSender)}</p>
                                   <p className="text-xs text-primary-foreground/80">{message.replyingToText}</p>
                               </a>
                           )}
@@ -456,7 +462,7 @@ export default function ChatPage() {
            {replyingTo && (
               <div className="relative rounded-t-lg bg-muted/50 p-2 pl-4 pr-8 text-sm">
                 <p className="font-semibold text-xs text-muted-foreground">
-                  Replying to {replyingTo.sender === currentUser ? 'yourself' : replyingTo.sender}
+                  Replying to {replyingTo.sender === currentUser ? 'yourself' : getDisplayName(replyingTo.sender)}
                 </p>
                 <p className="truncate text-muted-foreground">{getMessageText(replyingTo, 100)}</p>
                 <Button
