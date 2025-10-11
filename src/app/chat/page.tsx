@@ -106,7 +106,7 @@ export default function ChatPage() {
 
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -258,7 +258,7 @@ export default function ChatPage() {
     
     // Add temp message to state
     setMessages(prev => [...prev, tempMessage]);
-    setSelectedMessage(null);
+    setSelectedMessageId(null);
     removeImage();
 
     try {
@@ -328,7 +328,7 @@ export default function ChatPage() {
       });
     } finally {
       setDeletingMessageId(null);
-      setSelectedMessage(null);
+      setSelectedMessageId(null);
     }
   };
 
@@ -349,15 +349,15 @@ export default function ChatPage() {
   
   const handleReplyClick = (message: Message) => {
     setReplyingTo(message);
-    setSelectedMessage(null);
+    setSelectedMessageId(null);
     inputRef.current?.focus();
   }
 
   const handleMessageSelect = (message: Message) => {
-    if (selectedMessage?.id === message.id) {
-      setSelectedMessage(null);
+    if (selectedMessageId === message.id) {
+      setSelectedMessageId(null);
     } else {
-      setSelectedMessage(message);
+      setSelectedMessageId(message.id);
     }
   };
 
@@ -367,20 +367,17 @@ export default function ChatPage() {
       <div className="flex h-screen w-full flex-col bg-background">
         <main className="flex-1 overflow-hidden">
           <ScrollArea className="h-full" ref={scrollAreaRef}>
-            <div className="p-4 md:p-6" onClick={() => selectedMessage && setSelectedMessage(null)}>
+            <div className="p-4 md:p-6" onClick={() => selectedMessageId && setSelectedMessageId(null)}>
               <div className="flex flex-col gap-4">
                 {messages.map((message) => (
                   <div
                     key={message.id}
                     id={message.id}
-                    onClick={(e) => { e.stopPropagation(); handleMessageSelect(message); }}
                     className={cn(
                       "group flex items-start gap-3 rounded-lg p-2 transition-colors",
                       message.sender === currentUser
                         ? "justify-end"
-                        : "justify-start",
-                       selectedMessage?.id === message.id ? 'bg-muted' : 'hover:bg-muted/50',
-                       "cursor-pointer"
+                        : "justify-start"
                     )}
                   >
                      {message.sender !== currentUser && (
@@ -390,59 +387,71 @@ export default function ChatPage() {
                         </AvatarFallback>
                       </Avatar>
                     )}
-                    <div className={cn("flex items-center gap-2", message.sender === currentUser ? 'flex-row-reverse' : 'flex-row' )}>
-                        <div
-                        className={cn(
-                            "max-w-[75%] rounded-lg p-3 text-sm",
-                            message.sender === currentUser
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-card border"
-                        )}
-                        >
-                        {message.replyingToId && (
-                            <a href={`#${message.replyingToId}`} className="block mb-2 p-2 rounded-md bg-black/20 hover:bg-black/30 transition-colors">
-                                <p className="text-xs font-semibold">{message.replyingToSender === currentUser ? 'You' : message.replyingToSender}</p>
-                                <p className="text-xs text-primary-foreground/80">{message.replyingToText}</p>
-                            </a>
-                        )}
-                        {message.imageUrl && (
-                            <Image
-                            src={message.imageUrl}
-                            alt="Chat image"
-                            width={300}
-                            height={200}
-                            className="rounded-md mb-2 object-cover"
-                            onLoad={scrollToBottom}
-                            />
-                        )}
-                        <LinkifiedText text={getMessageText(message)} />
-                        {message.createdAt && (
-                            <p
+                    <Popover open={selectedMessageId === message.id} onOpenChange={(isOpen) => {
+                      if (!isOpen) setSelectedMessageId(null);
+                    }}>
+                      <PopoverTrigger asChild onClick={(e) => {
+                        e.stopPropagation();
+                        handleMessageSelect(message);
+                      }}>
+                        <div className={cn("flex items-center gap-2", message.sender === currentUser ? 'flex-row-reverse' : 'flex-row' )}>
+                            <div
                             className={cn(
-                                "text-xs mt-1",
+                                "max-w-[75%] rounded-lg p-3 text-sm cursor-pointer",
                                 message.sender === currentUser
-                                ? "text-primary-foreground/70"
-                                : "text-muted-foreground/70"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-card border",
+                                selectedMessageId === message.id ? (message.sender === currentUser ? 'bg-blue-700' : 'bg-muted') : ''
                             )}
                             >
-                            {format(message.createdAt.toDate(), "h:mm a")}
-                            </p>
-                        )}
-                        </div>
-                         <div className={cn(
-                          "flex self-center gap-1 transition-opacity",
-                          selectedMessage?.id === message.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                        )}>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleReplyClick(message)}>
-                                <MessageSquareReply className="h-4 w-4" />
-                            </Button>
-                            {message.sender === currentUser && (
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeletingMessageId(message.id)}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
+                            {message.replyingToId && (
+                                <a href={`#${message.replyingToId}`} className="block mb-2 p-2 rounded-md bg-black/20 hover:bg-black/30 transition-colors">
+                                    <p className="text-xs font-semibold">{message.replyingToSender === currentUser ? 'You' : message.replyingToSender}</p>
+                                    <p className="text-xs text-primary-foreground/80">{message.replyingToText}</p>
+                                </a>
                             )}
+                            {message.imageUrl && (
+                                <Image
+                                src={message.imageUrl}
+                                alt="Chat image"
+                                width={300}
+                                height={200}
+                                className="rounded-md mb-2 object-cover"
+                                onLoad={scrollToBottom}
+                                />
+                            )}
+                            <LinkifiedText text={getMessageText(message)} />
+                            {message.createdAt && (
+                                <p
+                                className={cn(
+                                    "text-xs mt-1",
+                                    message.sender === currentUser
+                                    ? "text-primary-foreground/70"
+                                    : "text-muted-foreground/70"
+                                )}
+                                >
+                                {format(message.createdAt.toDate(), "h:mm a")}
+                                </p>
+                            )}
+                            </div>
                         </div>
-                    </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-1" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => handleReplyClick(message)}>
+                              <MessageSquareReply className="h-4 w-4" />
+                          </Button>
+                          {message.sender === currentUser && (
+                              <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:text-destructive" onClick={() => {
+                                setDeletingMessageId(message.id);
+                                setSelectedMessageId(null);
+                              }}>
+                                  <Trash2 className="h-4 w-4" />
+                              </Button>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                     {message.sender === currentUser && (
                       <Avatar className="h-8 w-8 shrink-0">
                         <AvatarFallback>
@@ -567,5 +576,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    
