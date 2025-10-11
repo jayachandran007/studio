@@ -8,8 +8,8 @@ import { signInAnonymously } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 const PASSCODES: Record<string, string> = {
-  "passcode1": "user1",
-  "passcode2": "user2"
+  "passcode1": "Crazy",
+  "passcode2": "Cool"
 };
 const MAX_PASSCODE_LENGTH = 10; // A reasonable max length for passcodes
 
