@@ -99,7 +99,7 @@ export default function ChatPage() {
         const data = doc.data();
         messagesData.push({ 
           id: doc.id, 
-          isEncoded: data.isEncoded === undefined ? true : data.isEncoded,
+          isEncoded: data.isEncoded === undefined ? false : data.isEncoded,
           ...data 
         } as Message);
       });
