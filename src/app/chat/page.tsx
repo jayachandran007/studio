@@ -13,8 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, User, Smile, Paperclip, X, Trash2, MessageSquareReply } from "lucide-react";
+import { Loader2, Send, User, Smile, Paperclip, X, Trash2, MessageSquareReply, MoreVertical } from "lucide-react";
 import { format } from "date-fns";
 
 import { cn } from "@/lib/utils";
@@ -79,6 +80,8 @@ export default function ChatPage() {
 
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+
 
   useEffect(() => {
     const isAuthenticated = sessionStorage.getItem("isAuthenticated");
@@ -223,6 +226,7 @@ export default function ChatPage() {
     
     // Add temp message to state
     setMessages(prev => [...prev, tempMessage]);
+    setSelectedMessage(null);
 
     try {
       if (imageFile) {
@@ -289,6 +293,7 @@ export default function ChatPage() {
       });
     } finally {
       setDeletingMessageId(null);
+      setSelectedMessage(null);
     }
   };
 
@@ -307,10 +312,20 @@ export default function ChatPage() {
     return text;
   }
   
-  const handleReplyClick = (message: Message) => {
-    setReplyingTo(message);
+  const handleReplyClick = () => {
+    if (!selectedMessage) return;
+    setReplyingTo(selectedMessage);
+    setSelectedMessage(null);
     inputRef.current?.focus();
   }
+
+  const handleMessageSelect = (message: Message) => {
+    if (selectedMessage?.id === message.id) {
+      setSelectedMessage(null);
+    } else {
+      setSelectedMessage(message);
+    }
+  };
 
 
   return (
@@ -318,17 +333,19 @@ export default function ChatPage() {
       <div className="flex h-screen w-full flex-col bg-background">
         <main className="flex-1 overflow-hidden">
           <ScrollArea className="h-full" ref={scrollAreaRef}>
-            <div className="p-4 md:p-6">
+            <div className="p-4 md:p-6" onClick={() => selectedMessage && setSelectedMessage(null)}>
               <div className="flex flex-col gap-4">
                 {messages.map((message) => (
                   <div
                     key={message.id}
                     id={message.id}
+                    onClick={(e) => { e.stopPropagation(); handleMessageSelect(message); }}
                     className={cn(
-                      "group flex items-start gap-3",
+                      "group flex cursor-pointer items-start gap-3 rounded-lg p-2 transition-colors",
                       message.sender === currentUser
                         ? "justify-end"
-                        : "justify-start"
+                        : "justify-start",
+                      selectedMessage?.id === message.id ? 'bg-muted' : 'hover:bg-muted/50'
                     )}
                   >
                     {message.sender !== currentUser && (
@@ -343,7 +360,7 @@ export default function ChatPage() {
                         "max-w-[75%] rounded-lg p-3 text-sm",
                         message.sender === currentUser
                           ? "bg-primary text-primary-foreground"
-                          : "bg-muted"
+                          : "bg-card border"
                       )}
                     >
                       {message.replyingToId && (
@@ -376,30 +393,6 @@ export default function ChatPage() {
                         </p>
                       )}
                     </div>
-                     <div className="flex-shrink-0 self-center">
-                        <div className={cn("flex items-center gap-1", message.sender === currentUser ? "flex-row-reverse" : "")}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 shrink-0"
-                            onClick={() => handleReplyClick(message)}
-                          >
-                            <MessageSquareReply className="h-4 w-4" />
-                            <span className="sr-only">Reply to message</span>
-                          </Button>
-                          {message.sender === currentUser && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 shrink-0"
-                              onClick={() => setDeletingMessageId(message.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">Delete message</span>
-                            </Button>
-                          )}
-                        </div>
-                      </div>
                     {message.sender === currentUser && (
                       <>
                         <Avatar className="h-8 w-8 shrink-0">
@@ -467,56 +460,41 @@ export default function ChatPage() {
                     {isSending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
                     <span className="sr-only">Send</span>
                 </Button>
-                 <Popover>
-                    <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 md:hidden">
-                        <Paperclip className="h-4 w-4" />
-                        <span className="sr-only">More options</span>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">More actions</span>
                     </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" side="top" align="end">
-                    <div className="grid grid-cols-2 gap-1">
-                        <Button variant="ghost" size="icon" className="h-12 w-12" onClick={handleAttachClick}>
-                            <Paperclip className="h-5 w-5" />
-                        </Button>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-12 w-12">
-                                <Smile className="h-5 w-5" />
-                            </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-2" side="top" align="end">
-                            <div className="grid grid-cols-6 gap-1">
-                                {EMOJIS.map((emoji) => (
-                                <Button
-                                    key={emoji}
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-xl"
-                                    onClick={() => handleEmojiClick(emoji)}
-                                >
-                                    {emoji}
-                                </Button>
-                                ))}
-                            </div>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                    </PopoverContent>
-                </Popover>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="top" align="end">
+                         <DropdownMenuItem onClick={handleAttachClick}>
+                            <Paperclip className="mr-2 h-4 w-4" />
+                            <span>Attach File</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem disabled={!selectedMessage} onClick={handleReplyClick}>
+                            <MessageSquareReply className="mr-2 h-4 w-4" />
+                            <span>Reply</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            disabled={!selectedMessage || selectedMessage.sender !== currentUser}
+                            onClick={() => selectedMessage && setDeletingMessageId(selectedMessage.id)}
+                            className="text-destructive"
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Delete</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
 
-                <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 hidden md:flex" onClick={handleAttachClick}>
-                    <Paperclip className="h-4 w-4" />
-                    <span className="sr-only">Attach Image</span>
-                </Button>
                  <Popover>
                     <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 hidden md:flex">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
                         <Smile className="h-4 w-4" />
                         <span className="sr-only">Add Emoji</span>
                     </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-2">
+                    <PopoverContent className="w-auto p-2" side="top" align="end">
                     <div className="grid grid-cols-6 gap-1">
                         {EMOJIS.map((emoji) => (
                         <Button
