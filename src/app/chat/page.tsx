@@ -133,9 +133,16 @@ export default function ChatPage() {
         } as Message);
       });
       setMessages(messagesData);
+    }, (error) => {
+        console.error("Error fetching real-time messages:", error);
+        toast({
+            title: "Error",
+            description: "Could not fetch messages. Please check your connection and permissions.",
+            variant: "destructive",
+        });
     });
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, toast]);
 
   const scrollToBottom = () => {
     const scrollArea = scrollAreaRef.current;
@@ -227,8 +234,9 @@ export default function ChatPage() {
     setIsSending(true);
     setInput("");
     
-    let imageUrl: string | undefined = undefined;
-    
+    const tempId = `temp_${Date.now()}`;
+    const encodedMessageText = encodeMessage(trimmedInput);
+
     const replyingToData = replyingTo ? {
       replyingToId: replyingTo.id,
       replyingToText: getMessageText(replyingTo, 50),
@@ -238,23 +246,23 @@ export default function ChatPage() {
     setReplyingTo(null);
 
     // Create a temporary message for optimistic UI update
-    const tempId = Date.now().toString();
-    const encodedMessageText = encodeMessage(trimmedInput);
     const tempMessage: Message = {
       id: tempId,
       scrambledText: encodedMessageText,
       sender: currentUser,
       createdAt: Timestamp.now(),
       isEncoded: true,
-      ...(imageUrl && { imageUrl }), // This will be updated later
+      imageUrl: imagePreview || undefined, // Use preview for optimistic update
       ...replyingToData,
     };
     
     // Add temp message to state
     setMessages(prev => [...prev, tempMessage]);
     setSelectedMessage(null);
+    removeImage();
 
     try {
+      let imageUrl: string | undefined = undefined;
       if (imageFile) {
         const storageRef = ref(storage, `chat_images/${Date.now()}_${imageFile.name}`);
         await uploadBytes(storageRef, imageFile);
@@ -272,7 +280,8 @@ export default function ChatPage() {
 
       await addDoc(collection(db, "messages"), messageToStore);
       
-      removeImage();
+      // The real-time listener will automatically add the confirmed message.
+      // We don't need to do anything here on success.
 
     } catch (error: any) {
       console.error("Error sending message:", error);
@@ -288,16 +297,16 @@ export default function ChatPage() {
         description: description,
         variant: "destructive",
       });
-      // If sending fails, remove the optimistic message
-      setMessages(prev => prev.filter(m => m.id !== tempId));
-
     } finally {
-      setIsSending(false);
-      // Reset textarea height
-      if (inputRef.current) {
-        inputRef.current.style.height = "auto";
-      }
-      inputRef.current?.focus();
+        // Always remove the optimistic message, as the listener will add the real one.
+        // If there was an error, this removes the message that failed to send.
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+        setIsSending(false);
+        // Reset textarea height
+        if (inputRef.current) {
+            inputRef.current.style.height = "auto";
+        }
+        inputRef.current?.focus();
     }
   };
 
@@ -558,3 +567,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
