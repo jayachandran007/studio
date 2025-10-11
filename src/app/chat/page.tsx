@@ -312,7 +312,7 @@ export default function ChatPage() {
     <>
       <div className="flex h-screen w-full flex-col bg-background">
         <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-4">
-          <h1 className="text-xl font-bold">CipherChat</h1>
+          <h1 className="text-xl font-bold">AgentChat</h1>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Scrambled</span>
             <Switch checked={showScrambled} onCheckedChange={setShowScrambled} />
