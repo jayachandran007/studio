@@ -374,7 +374,7 @@ export default function ChatPage() {
                     key={message.id}
                     id={message.id}
                     className={cn(
-                      "group flex items-start gap-3 rounded-lg p-2 transition-colors",
+                      "group flex w-full items-start gap-3 rounded-lg p-2 transition-colors",
                       message.sender === currentUser
                         ? "justify-end"
                         : "justify-start"
@@ -390,50 +390,49 @@ export default function ChatPage() {
                     <Popover open={selectedMessageId === message.id} onOpenChange={(isOpen) => {
                       if (!isOpen) setSelectedMessageId(null);
                     }}>
-                      <PopoverTrigger asChild onClick={(e) => {
-                        e.stopPropagation();
-                        handleMessageSelect(message);
-                      }}>
-                        <div className={cn("flex items-center gap-2", message.sender === currentUser ? 'flex-row-reverse' : 'flex-row' )}>
-                            <div
-                            className={cn(
-                                "max-w-[75%] rounded-lg p-3 text-sm cursor-pointer",
-                                message.sender === currentUser
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-card border",
-                                selectedMessageId === message.id ? (message.sender === currentUser ? 'bg-blue-700' : 'bg-muted') : ''
-                            )}
-                            >
-                            {message.replyingToId && (
-                                <a href={`#${message.replyingToId}`} className="block mb-2 p-2 rounded-md bg-black/20 hover:bg-black/30 transition-colors">
-                                    <p className="text-xs font-semibold">{message.replyingToSender === currentUser ? 'You' : message.replyingToSender}</p>
-                                    <p className="text-xs text-primary-foreground/80">{message.replyingToText}</p>
-                                </a>
-                            )}
-                            {message.imageUrl && (
-                                <Image
-                                src={message.imageUrl}
-                                alt="Chat image"
-                                width={300}
-                                height={200}
-                                className="rounded-md mb-2 object-cover"
-                                onLoad={scrollToBottom}
-                                />
-                            )}
-                            <LinkifiedText text={getMessageText(message)} />
-                            {message.createdAt && (
-                                <p
-                                className={cn(
-                                    "text-xs mt-1",
-                                    message.sender === currentUser
-                                    ? "text-primary-foreground/70"
-                                    : "text-muted-foreground/70"
-                                )}
-                                >
-                                {format(message.createdAt.toDate(), "h:mm a")}
-                                </p>
-                            )}
-                            </div>
+                      <PopoverTrigger asChild>
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMessageSelect(message);
+                          }}
+                          className={cn(
+                            "max-w-[75%] rounded-lg p-3 text-sm cursor-pointer",
+                            message.sender === currentUser
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-card border",
+                            selectedMessageId === message.id ? (message.sender === currentUser ? 'bg-blue-700' : 'bg-muted') : ''
+                          )}
+                        >
+                          {message.replyingToId && (
+                              <a href={`#${message.replyingToId}`} className="block mb-2 p-2 rounded-md bg-black/20 hover:bg-black/30 transition-colors">
+                                  <p className="text-xs font-semibold">{message.replyingToSender === currentUser ? 'You' : message.replyingToSender}</p>
+                                  <p className="text-xs text-primary-foreground/80">{message.replyingToText}</p>
+                              </a>
+                          )}
+                          {message.imageUrl && (
+                              <Image
+                              src={message.imageUrl}
+                              alt="Chat image"
+                              width={300}
+                              height={200}
+                              className="rounded-md mb-2 object-cover"
+                              onLoad={scrollToBottom}
+                              />
+                          )}
+                          <LinkifiedText text={getMessageText(message)} />
+                          {message.createdAt && (
+                              <p
+                              className={cn(
+                                  "text-xs mt-1",
+                                  message.sender === currentUser
+                                  ? "text-primary-foreground/70"
+                                  : "text-muted-foreground/70"
+                              )}
+                              >
+                              {format(message.createdAt.toDate(), "h:mm a")}
+                              </p>
+                          )}
                         </div>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-1" onClick={(e) => e.stopPropagation()}>
