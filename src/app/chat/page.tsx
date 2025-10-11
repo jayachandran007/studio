@@ -108,8 +108,8 @@ export default function ChatPage() {
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
 
   const getDisplayName = useCallback((sender: string) => {
-    if (sender === 'user1') return 'Crazy_S';
-    if (sender === 'user2') return 'Cool_J';
+    if (sender === 'user1' || sender === 'Crazy') return 'Crazy_S';
+    if (sender === 'user2' || sender === 'Cool') return 'Cool_J';
     return sender;
   }, []);
 
@@ -234,7 +234,7 @@ export default function ChatPage() {
     const replyingToData = replyingTo ? {
       replyingToId: replyingTo.id,
       replyingToText: getMessageText(replyingTo, 50),
-      replyingToSender: replyingTo.sender,
+      replyingToSender: getDisplayName(replyingTo.sender),
     } : {};
     
     setReplyingTo(null);
@@ -369,12 +369,12 @@ export default function ChatPage() {
                     id={message.id}
                     className={cn(
                       "group flex w-full items-start gap-3",
-                      message.sender === currentUser
+                      getDisplayName(message.sender) === currentUser
                         ? "justify-end"
                         : "justify-start"
                     )}
                   >
-                     {message.sender !== currentUser && (
+                     {getDisplayName(message.sender) !== currentUser && (
                       <Avatar className="h-8 w-8 shrink-0">
                         <AvatarFallback>
                           <User className="h-5 w-5" />
@@ -392,15 +392,15 @@ export default function ChatPage() {
                           }}
                           className={cn(
                             "max-w-[75%] rounded-lg p-3 text-sm cursor-pointer",
-                            message.sender === currentUser
+                            getDisplayName(message.sender) === currentUser
                               ? "bg-primary text-primary-foreground"
                               : "bg-card border",
-                            selectedMessageId === message.id ? (message.sender === currentUser ? 'bg-blue-700' : 'bg-muted') : ''
+                            selectedMessageId === message.id ? (getDisplayName(message.sender) === currentUser ? 'bg-blue-700' : 'bg-muted') : ''
                           )}
                         >
                           {message.replyingToId && message.replyingToSender && (
                               <a href={`#${message.replyingToId}`} className="block mb-2 p-2 rounded-md bg-black/20 hover:bg-black/30 transition-colors">
-                                  <p className="text-xs font-semibold">{message.replyingToSender === currentUser ? 'You' : getDisplayName(message.replyingToSender)}</p>
+                                  <p className="text-xs font-semibold">{getDisplayName(message.replyingToSender) === currentUser ? 'You' : getDisplayName(message.replyingToSender)}</p>
                                   <p className="text-xs text-primary-foreground/80">{message.replyingToText}</p>
                               </a>
                           )}
@@ -419,7 +419,7 @@ export default function ChatPage() {
                               <p
                               className={cn(
                                   "text-xs mt-1",
-                                  message.sender === currentUser
+                                  getDisplayName(message.sender) === currentUser
                                   ? "text-primary-foreground/70"
                                   : "text-muted-foreground/70"
                               )}
@@ -434,7 +434,7 @@ export default function ChatPage() {
                           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => handleReplyClick(message)}>
                               <MessageSquareReply className="h-4 w-4" />
                           </Button>
-                          {message.sender === currentUser && (
+                          {getDisplayName(message.sender) === currentUser && (
                               <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:text-destructive" onClick={() => {
                                 setDeletingMessageId(message.id);
                                 setSelectedMessageId(null);
@@ -445,7 +445,7 @@ export default function ChatPage() {
                         </div>
                       </PopoverContent>
                     </Popover>
-                    {message.sender === currentUser && (
+                    {getDisplayName(message.sender) === currentUser && (
                       <Avatar className="h-8 w-8 shrink-0">
                         <AvatarFallback>
                           <User className="h-5 w-5" />
@@ -462,7 +462,7 @@ export default function ChatPage() {
            {replyingTo && (
               <div className="relative rounded-t-lg bg-muted/50 p-2 pl-4 pr-8 text-sm">
                 <p className="font-semibold text-xs text-muted-foreground">
-                  Replying to {replyingTo.sender === currentUser ? 'yourself' : getDisplayName(replyingTo.sender)}
+                  Replying to {getDisplayName(replyingTo.sender) === currentUser ? 'yourself' : getDisplayName(replyingTo.sender)}
                 </p>
                 <p className="truncate text-muted-foreground">{getMessageText(replyingTo, 100)}</p>
                 <Button
