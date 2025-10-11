@@ -99,7 +99,7 @@ export default function ChatPage() {
         const data = doc.data();
         messagesData.push({ 
           id: doc.id, 
-          isEncoded: data.isEncoded || false,
+          isEncoded: data.isEncoded === undefined ? true : data.isEncoded,
           ...data 
         } as Message);
       });
@@ -199,8 +199,7 @@ export default function ChatPage() {
     setInput("");
     
     let imageUrl: string | undefined = undefined;
-    const tempId = Date.now().toString();
-
+    
     const replyingToData = replyingTo ? {
       replyingToId: replyingTo.id,
       replyingToText: getMessageText(replyingTo, 50),
@@ -209,26 +208,28 @@ export default function ChatPage() {
     
     setReplyingTo(null);
 
+    // Create a temporary message for optimistic UI update
+    const tempId = Date.now().toString();
+    const encodedMessageText = encodeMessage(trimmedInput);
+    const tempMessage: Message = {
+      id: tempId,
+      scrambledText: encodedMessageText,
+      sender: currentUser,
+      createdAt: Timestamp.now(),
+      isEncoded: true,
+      ...(imageUrl && { imageUrl }), // This will be updated later
+      ...replyingToData,
+    };
+    
+    // Add temp message to state
+    setMessages(prev => [...prev, tempMessage]);
+
     try {
       if (imageFile) {
         const storageRef = ref(storage, `chat_images/${Date.now()}_${imageFile.name}`);
         await uploadBytes(storageRef, imageFile);
         imageUrl = await getDownloadURL(storageRef);
       }
-
-      const encodedMessageText = encodeMessage(trimmedInput);
-
-      const tempMessage: Message = {
-        id: tempId,
-        scrambledText: encodedMessageText,
-        sender: currentUser,
-        createdAt: Timestamp.now(),
-        isEncoded: true,
-        ...(imageUrl && { imageUrl }),
-        ...replyingToData,
-      };
-      setMessages(prev => [...prev, tempMessage]);
-
 
       const messageToStore: Omit<Message, 'id'> = {
         scrambledText: encodedMessageText,
@@ -240,8 +241,6 @@ export default function ChatPage() {
       };
 
       await addDoc(collection(db, "messages"), messageToStore);
-      
-      setMessages(prev => prev.filter(m => m.id !== tempId));
       
       removeImage();
 
@@ -259,6 +258,7 @@ export default function ChatPage() {
         description: description,
         variant: "destructive",
       });
+      // If sending fails, remove the optimistic message
       setMessages(prev => prev.filter(m => m.id !== tempId));
 
     } finally {
@@ -384,7 +384,7 @@ export default function ChatPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100"
+                            className="h-8 w-8 shrink-0"
                             onClick={() => handleReplyClick(message)}
                           >
                             <MessageSquareReply className="h-4 w-4" />
@@ -570,3 +570,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
