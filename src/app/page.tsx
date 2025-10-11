@@ -9,7 +9,7 @@ import { auth } from "@/lib/firebase";
 
 const PASSCODES: Record<string, string> = {
   "passcode1": "Crazy",
-  "passcode2": "Cool"
+  "passcode2": "Cool_J"
 };
 const MAX_PASSCODE_LENGTH = 10; // A reasonable max length for passcodes
 
