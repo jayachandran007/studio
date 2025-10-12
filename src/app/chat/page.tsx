@@ -390,7 +390,7 @@ export default function ChatPage() {
                           {message.replyingToId && message.replyingToSender && (
                               <a href={`#${message.replyingToId}`} className="block mb-2 p-2 rounded-md bg-black/20 hover:bg-black/30 transition-colors">
                                   <p className="text-xs font-semibold">{getDisplayName(message.replyingToSender) === currentUser ? 'You' : getDisplayName(message.replyingToSender)}</p>
-                                  <p className="text-xs text-primary-foreground/80">{message.replyingToText}</p>
+                                  <p className="text-xs text-foreground/90">{message.replyingToText}</p>
                               </a>
                           )}
                           {message.imageUrl && (
@@ -558,3 +558,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
