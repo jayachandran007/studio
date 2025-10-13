@@ -110,8 +110,8 @@ export default function ChatPage() {
   const getDisplayName = useCallback((sender: string) => {
     if (sender === 'user1') return 'Crazy';
     if (sender === 'user2') return 'Cool';
-    if (sender === 'Crazy_S') return 'Crazy';
-    if (sender === 'Cool_J') return 'Cool';
+    if (sender === 'Crazy') return 'Crazy';
+    if (sender === 'Cool') return 'Cool';
 
     return sender;
   }, []);
@@ -135,10 +135,12 @@ export default function ChatPage() {
 
     window.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('blur', handleLogout);
 
     return () => {
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('blur', handleLogout);
     };
   }, [handleLogout]);
 
@@ -372,13 +374,6 @@ export default function ChatPage() {
                         : "justify-start"
                     )}
                   >
-                     {getDisplayName(message.sender) !== currentUser && (
-                      <Avatar className="h-8 w-8 shrink-0">
-                        <AvatarFallback>
-                          <User className="h-5 w-5" />
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
                     <Popover open={selectedMessageId === message.id} onOpenChange={(isOpen) => {
                       if (!isOpen) setSelectedMessageId(null);
                     }}>
@@ -443,13 +438,6 @@ export default function ChatPage() {
                         </div>
                       </PopoverContent>
                     </Popover>
-                    {getDisplayName(message.sender) === currentUser && (
-                      <Avatar className="h-8 w-8 shrink-0">
-                        <AvatarFallback>
-                          <User className="h-5 w-5" />
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
                   </div>
                 ))}
               </div>
