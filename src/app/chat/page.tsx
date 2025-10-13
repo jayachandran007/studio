@@ -108,8 +108,8 @@ export default function ChatPage() {
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
 
   const getDisplayName = useCallback((sender: string) => {
-    if (sender === 'user1') return 'Crazy_S';
-    if (sender === 'user2') return 'Cool_J';
+    if (sender === 'Crazy') return 'Crazy';
+    if (sender === 'Cool') return 'Cool';
     return sender;
   }, []);
 
@@ -564,5 +564,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    
