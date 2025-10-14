@@ -141,10 +141,12 @@ export default function ChatPage() {
 
     window.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('blur', handleLogout);
 
     return () => {
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('blur', handleLogout);
     };
   }, [handleLogout]);
 
@@ -562,5 +564,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    
