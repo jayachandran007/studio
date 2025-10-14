@@ -118,6 +118,7 @@ export default function ChatPage() {
   }, []);
 
   const handleLogout = useCallback(() => {
+    console.log("log out called");
     if(!isAttachementOpen)
     {
     sessionStorage.removeItem("isAuthenticated");
@@ -135,7 +136,7 @@ export default function ChatPage() {
     };
     
     const handlePageHide = () => {
-        handleLogout();
+      handleLogout();
     }
 
     window.addEventListener('visibilitychange', handleVisibilityChange);
@@ -216,6 +217,7 @@ export default function ChatPage() {
   };
 
   const handleAttachClick = () => {
+    console.log("opening attachement");
     isAttachementOpen = true;
     fileInputRef.current?.click();
   };
