@@ -32,6 +32,12 @@ export async function sendPushNotification(input: SendPushNotificationInput): Pr
   return sendPushNotificationFlow(input);
 }
 
+const randomFactPrompt = ai.definePrompt({
+    name: 'randomFactPrompt',
+    prompt: 'Generate one random, interesting, and short fact.',
+});
+
+
 const sendPushNotificationFlow = ai.defineFlow(
   {
     name: 'sendPushNotificationFlow',
@@ -57,12 +63,17 @@ const sendPushNotificationFlow = ai.defineFlow(
         console.log(`No valid FCM tokens found for user: ${recipientUid}`);
         return;
     }
+    
+    // 2. Generate a random fact
+    const factResponse = await randomFactPrompt();
+    const randomFact = factResponse.text;
 
-    // 2. Construct the push notification payload
+
+    // 3. Construct the push notification payload
     const payload = {
         notification: {
           title: `New message from ${senderName}`,
-          body: message,
+          body: randomFact,
         },
         webpush: {
             fcm_options: {
@@ -75,7 +86,7 @@ const sendPushNotificationFlow = ai.defineFlow(
         tokens: tokens,
     };
     
-    // 3. Send the notification
+    // 4. Send the notification
     try {
       const response = await messaging.sendEachForMulticast(payload);
       console.log('Successfully sent message:', response);
