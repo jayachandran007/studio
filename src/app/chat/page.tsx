@@ -146,7 +146,7 @@ export default function ChatPage() {
         });
 
         // Get token
-        const currentToken = await getToken(messagingInstance, { vapidKey: "BKyxbbBcfR_gBHb1j_Y4m3aZgI66L92D5p8Emn9whk5y-Hkt3u9t6p_OGwA3R-3rXk_Z_xWbW-uG-jHkXvI_fDc" });
+        const currentToken = await getToken(messagingInstance, { vapidKey: "BL8V7BHhy6nE9WICeE09mNiKFC1u71vroAb3p7JyjFpI5n05yZvMx84o14MFE4O3944a8IDYKyh0dzR1bm5PouU" });
         if (currentToken) {
           // Save the token to Firestore
           const tokenRef = doc(db, "fcmTokens", currentToken);
