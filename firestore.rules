@@ -1,16 +1,8 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // By default, deny all reads and writes
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Allow authenticated users to read and create messages
     match /messages/{messageId} {
-      allow list, create: if request.auth != null;
+      allow read, create: if request.auth != null;
       allow delete: if request.auth != null && resource.data.sender == request.auth.uid;
     }
   }
