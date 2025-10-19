@@ -262,14 +262,6 @@ export default function ChatPage() {
         });
     });
 
-    messaging.then(messagingInstance => {
-        if (messagingInstance) {
-            navigator.serviceWorker.ready.then((registration) => {
-                console.log("Service Worker ready for messaging.");
-            });
-        }
-    });
-
     return () => unsubscribe();
   }, [currentUser, toast]);
 
@@ -368,11 +360,8 @@ export default function ChatPage() {
         ...replyingToData,
       };
 
-      const docRef = await addDoc(collection(db, "messages"), messageToStore);
+      await addDoc(collection(db, "messages"), messageToStore);
       
-      // The real-time listener will automatically add the confirmed message.
-      // We don't need to do anything here on success.
-
     } catch (error: any) {
       console.error("Error sending message:", error);
       let description = "Could not send message. Please try again.";
@@ -389,10 +378,10 @@ export default function ChatPage() {
         description: description,
         variant: "destructive",
       });
+      // If there was an error, remove the optimistic message
+      setMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
-        // Always remove the optimistic message, as the listener will add the real one.
-        // If there was an error, this removes the message that failed to send.
-        setMessages(prev => prev.filter(m => m.id !== tempId));
+        // This will now run even if an error occurs
         setIsSending(false);
         // Reset textarea height
         if (inputRef.current) {
