@@ -370,15 +370,6 @@ export default function ChatPage() {
                         : "justify-start"
                     )}
                   >
-                     {getDisplayName(message.sender) !== getDisplayName(currentUser!) && (
-                        <Image
-                        src={`https://i.pravatar.cc/40?u=${message.sender}`}
-                        alt="Avatar"
-                        width={40}
-                        height={40}
-                        className="rounded-full"
-                        />
-                    )}
                     <Popover open={selectedMessageId === message.id} onOpenChange={(isOpen) => {
                       if (!isOpen) setSelectedMessageId(null);
                     }}>
@@ -445,15 +436,6 @@ export default function ChatPage() {
                         </div>
                       </PopoverContent>
                     </Popover>
-                    {getDisplayName(message.sender) === getDisplayName(currentUser!) && (
-                        <Image
-                        src={`https://i.pravatar.cc/40?u=${message.sender}`}
-                        alt="Avatar"
-                        width={40}
-                        height={40}
-                        className="rounded-full"
-                        />
-                    )}
                   </div>
                 ))}
               </div>
@@ -583,5 +565,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    
