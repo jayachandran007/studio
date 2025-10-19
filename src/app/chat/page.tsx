@@ -118,14 +118,8 @@ export default function ChatPage() {
   const handleNotificationPermission = async () => {
     if (!currentUser) return;
     
-    let messagingInstance: Messaging | null = null;
-    try {
-        messagingInstance = await messaging;
-    } catch (error) {
-        console.error("Firebase Messaging not supported:", error);
-    }
-
-
+    const messagingInstance = await messaging;
+    
     if (!messagingInstance) {
       toast({
         title: "Unsupported Browser",
@@ -173,7 +167,7 @@ export default function ChatPage() {
       console.error('An error occurred while requesting permission ', error);
       toast({
         title: "Permission Error",
-        description: "An error occurred while enabling notifications. Please try again." + error,
+        description: "An error occurred while enabling notifications. Please try again.",
         variant: "destructive",
       });
     }
@@ -312,13 +306,14 @@ export default function ChatPage() {
   const handleSend = async () => {
     const trimmedInput = input.trim();
     if ((!trimmedInput && !imageFile) || !currentUser) return;
-
+  
     setIsSending(true);
     setInput("");
+    removeImage();
     
     const tempId = `temp_${Date.now()}`;
     const encodedMessageText = encodeMessage(trimmedInput);
-
+  
     const replyingToData = replyingTo ? {
       replyingToId: replyingTo.id,
       replyingToText: getMessageText(replyingTo, 50),
@@ -326,7 +321,7 @@ export default function ChatPage() {
     } : {};
     
     setReplyingTo(null);
-
+  
     // Create a temporary message for optimistic UI update
     const tempMessage: Message = {
       id: tempId,
@@ -334,25 +329,22 @@ export default function ChatPage() {
       sender: currentUser,
       createdAt: Timestamp.now(),
       isEncoded: true,
-      imageUrl: imagePreview || undefined, // Use preview for optimistic update
+      imageUrl: imagePreview || undefined,
       ...replyingToData,
     };
     
-    // Add temp message to state
     setMessages(prev => [...prev, tempMessage]);
     setSelectedMessageId(null);
-    
-
+  
     try {
       let imageUrl: string | undefined = undefined;
       if (imageFile) {
         const storageRef = ref(storage, `chat_images/${Date.now()}_${imageFile.name}`);
-        await uploadBytes(storageRef, imageFile);
-        imageUrl = await getDownloadURL(storageRef);
-        
+        const uploadTask = await uploadBytes(storageRef, imageFile);
+        imageUrl = await getDownloadURL(uploadTask.ref);
       }
-      removeImage();
-      const messageToStore: Omit<Message, 'id' | 'scrambledText' | 'sender' | 'isEncoded'> & { sender: string; scrambledText: string; createdAt: any; isEncoded: boolean; imageUrl?: string} = {
+  
+      const messageToStore = {
         scrambledText: encodedMessageText,
         sender: currentUser,
         createdAt: serverTimestamp(),
@@ -360,7 +352,7 @@ export default function ChatPage() {
         ...(imageUrl && { imageUrl }),
         ...replyingToData,
       };
-
+  
       await addDoc(collection(db, "messages"), messageToStore);
       
     } catch (error: any) {
@@ -369,20 +361,19 @@ export default function ChatPage() {
       if (error.code === 'storage/unauthorized') {
         description = "You don't have permission to upload images. Please check your Firebase Storage rules."
       } else if (error.code === 'storage/retry-limit-exceeded') {
-        description = "Network error: Could not upload image. Please check your connection and Firebase Storage rules."
+        description = "Network error: Could not upload image. Please check your connection."
       } else if (error.code === 'permission-denied') {
         description = "You don't have permission to send messages. Please check your Firestore rules."
       }
-
+  
       toast({
-        title: "Error",
+        title: "Error sending message",
         description: description,
         variant: "destructive",
       });
       // If there was an error, remove the optimistic message
       setMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
-        // This will now run even if an error occurs
         setIsSending(false);
         // Reset textarea height
         if (inputRef.current) {
@@ -651,5 +642,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    
