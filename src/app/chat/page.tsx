@@ -341,7 +341,7 @@ export default function ChatPage() {
     // Add temp message to state
     setMessages(prev => [...prev, tempMessage]);
     setSelectedMessageId(null);
-    removeImage();
+    
 
     try {
       let imageUrl: string | undefined = undefined;
@@ -349,8 +349,9 @@ export default function ChatPage() {
         const storageRef = ref(storage, `chat_images/${Date.now()}_${imageFile.name}`);
         await uploadBytes(storageRef, imageFile);
         imageUrl = await getDownloadURL(storageRef);
+        
       }
-
+      removeImage();
       const messageToStore: Omit<Message, 'id' | 'scrambledText' | 'sender' | 'isEncoded'> & { sender: string; scrambledText: string; createdAt: any; isEncoded: boolean; imageUrl?: string} = {
         scrambledText: encodedMessageText,
         sender: currentUser,

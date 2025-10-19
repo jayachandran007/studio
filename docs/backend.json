@@ -1,0 +1,143 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the CipherChat application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "username": {
+          "type": "string",
+          "description": "The username of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email"
+      ]
+    },
+    "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatMessage",
+      "type": "object",
+      "description": "Represents a chat message within CipherChat.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the chat message."
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Reference to the User who sent the message. (Relationship: User 1:N ChatMessage)"
+        },
+        "receiverId": {
+          "type": "string",
+          "description": "Reference to the User who received the message. (Relationship: User 1:N ChatMessage)"
+        },
+        "originalText": {
+          "type": "string",
+          "description": "The original, un-scrambled message text."
+        },
+        "scrambledText": {
+          "type": "string",
+          "description": "The scrambled version of the message."
+        },
+        "scrambleMethod": {
+          "type": "string",
+          "description": "The method used to scramble the message (e.g., letter substitution, reverse)."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the message was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "senderId",
+        "receiverId",
+        "originalText",
+        "scrambledText",
+        "scrambleMethod",
+        "timestamp"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. The document ID is the user's unique ID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{senderId}/messages/{messageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores chat messages. Includes denormalized 'senderId' and 'receiverId' for authorization independence.",
+          "params": [
+            {
+              "name": "senderId",
+              "description": "The unique identifier of the message sender."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier of the chat message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{receiverId}/messages/{messageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores chat messages. Includes denormalized 'senderId' and 'receiverId' for authorization independence.",
+          "params": [
+            {
+              "name": "receiverId",
+              "description": "The unique identifier of the message receiver."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier of the chat message."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to ensure authorization independence, clarity, and scalability for the CipherChat application. The primary focus is on securing chat messages between users. We leverage path-based ownership and denormalization to achieve these goals.\n\n1.  **User Data:** User profiles are stored in `/users/{userId}`. This allows straightforward management of user data and aligns with path-based ownership. Each document stores user's profile information.\n\n2.  **Chat Messages:** Chat messages are stored in a subcollection `/users/{senderId}/messages/{messageId}` and `/users/{receiverId}/messages/{messageId}`. This approach ensures that only the involved users can access these messages. The design copies `senderId` and `receiverId` into each message document to make authorization independent of parent document reads. List operations are secure, as rules can efficiently filter messages based on `request.auth.uid`.\n\nThis structure supports atomic operations (transactions/batches) because no `get()` calls are needed in the security rules to authorize operations on message documents. The intent is clear: only the sender and receiver have access to the message. Security rules can be easily debugged because authorization logic is based on `request.auth.uid` and the document's `senderId` and `receiverId`.\n\nQAPs are satisfied because each message document explicitly stores the `senderId` and `receiverId`, allowing rules to filter messages based on these attributes without relying on parent document reads. This enables secure `list` operations, as the rules can verify that `request.auth.uid` matches either the `senderId` or the `receiverId`."
+  }
+}
