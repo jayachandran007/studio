@@ -3,8 +3,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /messages/{messageId} {
+      // Allow any authenticated user to read all messages and create new messages.
       allow read, create: if request.auth != null;
-      allow delete: if request.auth != null && resource.data.sender == request.auth.uid;
+
+      // Allow a user to update or delete a message only if they are the sender.
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.sender;
     }
   }
 }
