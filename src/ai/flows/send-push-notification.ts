@@ -19,14 +19,13 @@ const SendPushNotificationInputSchema = z.object({
 
 export type SendPushNotificationInput = z.infer<typeof SendPushNotificationInputSchema>;
 
+// Initialize admin SDK only if it hasn't been initialized yet.
 if (admin.apps.length === 0) {
     admin.initializeApp({
       credential: admin.credential.applicationDefault(),
       projectId: "studio-9367397757-f04cc",
     });
 }
-const firestore = getFirestore();
-const messaging = getMessaging();
 
 export async function sendPushNotification(input: SendPushNotificationInput): Promise<void> {
   return sendPushNotificationFlow(input);
@@ -45,7 +44,9 @@ const sendPushNotificationFlow = ai.defineFlow(
     outputSchema: z.void(),
   },
   async ({recipientUid, senderName, message, messageId}) => {
-    
+    const firestore = getFirestore();
+    const messaging = getMessaging();
+
     // 1. Get the recipient's FCM tokens from Firestore
     const tokensSnapshot = await firestore
       .collection('fcmTokens')
@@ -105,5 +106,3 @@ const sendPushNotificationFlow = ai.defineFlow(
     }
   }
 );
-
-    
