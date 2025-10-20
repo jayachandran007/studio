@@ -219,7 +219,8 @@ export default function ChatPage() {
         imageUrl = await getDownloadURL(snapshot.ref);
       }
   
-      const encodedMessageText = encodeMessage(trimmedInput);
+      const messageTextToSend = trimmedInput || ' ';
+      const encodedMessageText = encodeMessage(messageTextToSend);
     
       const replyingToData = replyingTo ? {
         replyingToId: replyingTo.id,
@@ -321,14 +322,18 @@ export default function ChatPage() {
   return (
     <>
       <div className="flex h-screen w-full flex-col bg-background">
+        <header className="shrink-0 border-b bg-card p-4 flex justify-between items-center">
+          <h1 className="text-xl font-bold">CipherChat</h1>
+          <Button variant="outline" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
+        </header>
         <main className="flex-1 overflow-hidden">
           <ScrollArea className="h-full" ref={scrollAreaRef}>
             <div className="p-4 md:p-6" onClick={() => selectedMessageId && setSelectedMessageId(null)}>
-              <Button variant="outline" onClick={handleLogout} className="absolute top-4 right-4 z-10">
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-              <div className="flex flex-col gap-4 pt-16">
+              
+              <div className="flex flex-col gap-4">
                 {messages.map((message) => (
                   <div
                     key={message.id}
@@ -340,6 +345,15 @@ export default function ChatPage() {
                         : "justify-start"
                     )}
                   >
+                     {getDisplayName(message.sender) !== getDisplayName(currentUser!) && (
+                      <Image
+                        src={`https://i.pravatar.cc/40?u=${message.sender}`}
+                        alt="Avatar"
+                        width={40}
+                        height={40}
+                        className="rounded-full"
+                      />
+                    )}
                     <Popover open={selectedMessageId === message.id} onOpenChange={(isOpen) => {
                       if (!isOpen) setSelectedMessageId(null);
                     }}>
@@ -406,6 +420,15 @@ export default function ChatPage() {
                         </div>
                       </PopoverContent>
                     </Popover>
+                    {getDisplayName(message.sender) === getDisplayName(currentUser!) && (
+                      <Image
+                        src={`https://i.pravatar.cc/40?u=${message.sender}`}
+                        alt="Avatar"
+                        width={40}
+                        height={40}
+                        className="rounded-full"
+                      />
+                    )}
                   </div>
                 ))}
               </div>
@@ -535,3 +558,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
