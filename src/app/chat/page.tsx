@@ -246,11 +246,26 @@ export default function ChatPage() {
     
     try {
       let imageUrl: string | undefined = undefined;
-  
+      
       if (imageFile) {
         const imageRef = ref(storage, `chat_images/${currentUser}_${Date.now()}_${imageFile.name}`);
-        const snapshot = await uploadBytes(imageRef, imageFile);
-        imageUrl = await getDownloadURL(snapshot.ref);
+        try {
+          const snapshot = await uploadBytes(imageRef, imageFile);
+          imageUrl = await getDownloadURL(snapshot.ref);
+        } catch (uploadError: any) {
+          console.error("Firebase Storage upload error:", uploadError);
+          let description = "Could not upload image. Please try again.";
+          if (uploadError.code === 'storage/unauthorized') {
+            description = "You do not have permission to upload files. Please check storage security rules."
+          }
+          toast({
+            title: "Image Upload Failed",
+            description: description,
+            variant: "destructive",
+          });
+          setIsSending(false);
+          return; // Stop the send process if upload fails
+        }
       }
   
       const messageTextToSend = trimmedInput || ' ';
@@ -283,8 +298,8 @@ export default function ChatPage() {
     } catch (error: any) {
       console.error("Error sending message:", error);
       let description = "Could not send message. Please try again.";
-      if (error.code === 'permission-denied' || error.code === 'storage/unauthorized') {
-        description = "You don't have permission to send messages or upload files. Please check your security rules."
+      if (error.code === 'permission-denied') {
+        description = "You don't have permission to send messages. Please check your security rules."
       }
   
       toast({
