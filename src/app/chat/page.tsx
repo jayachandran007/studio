@@ -13,7 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Smile, X, Trash2, MessageSquareReply, Paperclip } from "lucide-react";
+import { Loader2, Send, Smile, X, Trash2, MessageSquareReply, Paperclip, LogOut } from "lucide-react";
 import { format } from "date-fns";
 
 import { cn } from "@/lib/utils";
@@ -345,20 +345,14 @@ export default function ChatPage() {
   return (
     <>
       <div className="flex h-screen w-full flex-col bg-background">
-        <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 md:px-6">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 font-semibold">
-              <span className="text-lg">CipherChat</span>
-            </div>
-          </div>
-          <Button variant="outline" onClick={handleLogout}>
-            Logout
-          </Button>
-        </header>
         <main className="flex-1 overflow-hidden">
           <ScrollArea className="h-full" ref={scrollAreaRef}>
             <div className="p-4 md:p-6" onClick={() => selectedMessageId && setSelectedMessageId(null)}>
-              <div className="flex flex-col gap-4">
+              <Button variant="outline" onClick={handleLogout} className="absolute top-4 right-4 z-10">
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+              <div className="flex flex-col gap-4 pt-16">
                 {messages.map((message) => (
                   <div
                     key={message.id}
