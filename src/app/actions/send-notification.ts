@@ -1,3 +1,4 @@
+
 'use server';
 
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
@@ -11,9 +12,14 @@ interface sendNotificationProps {
 }
 
 export async function sendNotification({ message, sender, messageId }: sendNotificationProps) {
-    await initializeAdminApp();
-    const firestore = getFirestore();
-    const messaging = getMessaging();
+    const adminApp = await initializeAdminApp();
+    if (!adminApp) {
+        // Admin SDK not initialized, so we can't send notifications.
+        return;
+    }
+
+    const { firestore, app } = adminApp;
+    const messaging = getMessaging(app);
 
     const users = ['Cool', 'Crazy'];
     const recipient = users.find(user => user !== sender);
