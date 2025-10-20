@@ -71,6 +71,26 @@
         "scrambleMethod",
         "timestamp"
       ]
+    },
+    "FCMToken": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FCMToken",
+      "type": "object",
+      "description": "Stores a user's Firebase Cloud Messaging token for push notifications.",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "The username of the user who owns the token."
+        },
+        "token": {
+          "type": "string",
+          "description": "The FCM registration token."
+        }
+      },
+      "required": [
+        "username",
+        "token"
+      ]
     }
   },
   "auth": {
@@ -136,8 +156,24 @@
             }
           ]
         }
+      },
+      {
+        "path": "/fcmTokens/{userId}",
+        "definition": {
+          "entityName": "FCMToken",
+          "schema": {
+            "$ref": "#/backend/entities/FCMToken"
+          },
+          "description": "Stores FCM tokens for users. The document ID is the user's unique ID (username in this case).",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore data structure is designed to ensure authorization independence, clarity, and scalability for the CipherChat application. The primary focus is on securing chat messages between users. We leverage path-based ownership and denormalization to achieve these goals.\n\n1.  **User Data:** User profiles are stored in `/users/{userId}`. This allows straightforward management of user data and aligns with path-based ownership. Each document stores user's profile information.\n\n2.  **Chat Messages:** Chat messages are stored in a subcollection `/users/{senderId}/messages/{messageId}` and `/users/{receiverId}/messages/{messageId}`. This approach ensures that only the involved users can access these messages. The design copies `senderId` and `receiverId` into each message document to make authorization independent of parent document reads. List operations are secure, as rules can efficiently filter messages based on `request.auth.uid`.\n\nThis structure supports atomic operations (transactions/batches) because no `get()` calls are needed in the security rules to authorize operations on message documents. The intent is clear: only the sender and receiver have access to the message. Security rules can be easily debugged because authorization logic is based on `request.auth.uid` and the document's `senderId` and `receiverId`.\n\nQAPs are satisfied because each message document explicitly stores the `senderId` and `receiverId`, allowing rules to filter messages based on these attributes without relying on parent document reads. This enables secure `list` operations, as the rules can verify that `request.auth.uid` matches either the `senderId` or the `receiverId`."
+    "reasoning": "The Firestore data structure is designed to ensure authorization independence, clarity, and scalability for the CipherChat application. The primary focus is on securing chat messages between users. We leverage path-based ownership and denormalization to achieve these goals.\n\n1.  **User Data:** User profiles are stored in `/users/{userId}`. This allows straightforward management of user data and aligns with path-based ownership. Each document stores user's profile information.\n\n2.  **Chat Messages:** Chat messages are stored in a subcollection `/users/{senderId}/messages/{messageId}` and `/users/{receiverId}/messages/{messageId}`. This approach ensures that only the involved users can access these messages. The design copies `senderId` and `receiverId` into each message document to make authorization independent of parent document reads. List operations are secure, as rules can efficiently filter messages based on `request.auth.uid`.\n\n3.  **FCM Tokens:** FCM tokens are stored in `/fcmTokens/{userId}`. This allows the server to easily query for a user's token to send push notifications. Security rules ensure that users can only write their own token.\n\nThis structure supports atomic operations (transactions/batches) because no `get()` calls are needed in the security rules to authorize operations on message documents. The intent is clear: only the sender and receiver have access to the message. Security rules can be easily debugged because authorization logic is based on `request.auth.uid` and the document's `senderId` and `receiverId`.\n\nQAPs are satisfied because each message document explicitly stores the `senderId` and `receiverId`, allowing rules to filter messages based on these attributes without relying on parent document reads. This enables secure `list` operations, as the rules can verify that `request.auth.uid` matches either the `senderId` or the `receiverId`."
   }
 }

@@ -4,19 +4,21 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getMessaging, getToken, isSupported } from "firebase/messaging";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Smile, X, Trash2, MessageSquareReply, Paperclip, LogOut } from "lucide-react";
+import { Loader2, Send, Smile, X, Trash2, MessageSquareReply, Paperclip, LogOut, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { useFirebase } from "@/firebase/provider";
 
 import { cn } from "@/lib/utils";
+import { sendNotification } from "@/app/actions/send-notification";
 
 const EMOJIS = ['😀', '😂', '😍', '🤔', '👍', '❤️', '🎉', '🔥', '🚀', '💯', '🙏', '🤷‍♂️', '🤧', '🥰'];
 
@@ -28,7 +30,7 @@ interface Message {
   isEncoded: boolean;
   replyingToId?: string;
   replyingToText?: string;
-  replyingToSender?: string;
+or?: string;
   imageUrl?: string;
 }
 
@@ -91,7 +93,7 @@ const LinkifiedText = ({ text }: { text: string }) => {
 
 export default function ChatPage() {
   const router = useRouter();
-  const { firestore: db, storage } = useFirebase();
+  const { firestore: db, storage, firebaseApp } = useFirebase();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -248,15 +250,13 @@ export default function ChatPage() {
     try {
       let imageUrl: string | undefined = undefined;
   
-      // Step 1: Upload image if it exists
       if (imageFile) {
         const imageRef = ref(storage, `chat_images/${currentUser}_${Date.now()}_${imageFile.name}`);
         const snapshot = await uploadBytes(imageRef, imageFile);
         imageUrl = await getDownloadURL(snapshot.ref);
       }
   
-      // Step 2: Prepare message data
-      const messageTextToSend = trimmedInput || ' '; // Send a space if only an image is present
+      const messageTextToSend = trimmedInput || ' '; 
       const encodedMessageText = encodeMessage(messageTextToSend);
       
       const replyingToData = replyingTo ? {
@@ -277,21 +277,25 @@ export default function ChatPage() {
           messageToStore.imageUrl = imageUrl;
       }
   
-      // Step 3: Add message to Firestore
-      await addDoc(collection(db, "messages"), messageToStore);
+      const docRef = await addDoc(collection(db, "messages"), messageToStore);
+      await sendNotification({
+        message: messageTextToSend,
+        sender: currentUser,
+        messageId: docRef.id
+      });
   
-      // Step 4: Reset UI state on success
       setInput("");
       setReplyingTo(null);
       cancelImagePreview();
   
     } catch (error: any) {
       console.error("Error sending message:", error);
-      let description = "Could not send message. Please try again.";
+      let description = `Could not send message. Please try again. ${error.message}`;
       
       if (error.code) {
         switch (error.code) {
           case 'storage/unauthorized':
+          case 'storage/object-not-found':
             description = "You don't have permission to upload files. Please check storage security rules.";
             break;
           case 'permission-denied':
@@ -308,7 +312,6 @@ export default function ChatPage() {
           variant: "destructive",
       });
     } finally {
-      // Step 5: Final state reset regardless of outcome
       setIsSending(false);
       if (inputRef.current) {
         inputRef.current.style.height = "auto";
@@ -357,7 +360,7 @@ export default function ChatPage() {
   
   const handleReplyClick = (message: Message) => {
     setReplyingTo(message);
-    setSelectedMessageId(null);
+setSelectedMessageId(null);
     inputRef.current?.focus();
   }
 
@@ -369,11 +372,57 @@ export default function ChatPage() {
     }
   };
 
+  const handleRequestPermission = async () => {
+    if (!firebaseApp || !db || !currentUser) {
+      toast({
+        title: "Error",
+        description: "Firebase not initialized or user not logged in.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const messaging = getMessaging(firebaseApp);
+      const permission = await Notification.requestPermission();
+
+      if (permission === 'granted') {
+        toast({ title: "Success", description: "Notification permission granted." });
+        const fcmToken = await getToken(messaging, { vapidKey: process.env.NEXT_PUBLIC_VAPID_KEY });
+
+        if (fcmToken) {
+          const tokenRef = doc(db, 'fcmTokens', currentUser);
+          await setDoc(tokenRef, { token: fcmToken, username: currentUser }, { merge: true });
+          toast({ title: "Success", description: "Notification token saved." });
+        } else {
+          toast({ title: "Error", description: "Could not get notification token.", variant: "destructive" });
+        }
+      } else {
+        toast({
+          title: "Permission Denied",
+          description: "You will not receive notifications.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error getting notification permission:', error);
+      toast({
+        title: "Error",
+        description: "An error occurred while requesting notification permission.",
+        variant: "destructive",
+      });
+    }
+  };
+
 
   return (
     <>
       <div className="flex h-screen w-full flex-col bg-background">
-         <div className="absolute top-2 right-2 z-10">
+         <div className="absolute top-2 right-2 z-10 flex gap-2">
+            <Button variant="ghost" size="sm" onClick={handleRequestPermission}>
+              <Bell className="h-4 w-4 mr-2" />
+              Enable Notifications
+            </Button>
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
               Logout
