@@ -242,80 +242,88 @@ export default function ChatPage() {
     const trimmedInput = input.trim();
     if (!trimmedInput && !imageFile) return;
     if (!currentUser || !db || !storage) return;
-  
+
     setIsSending(true);
-    
-    try {
-      let imageUrl: string | undefined = undefined;
-      
-      if (imageFile) {
-        const imageRef = ref(storage, `chat_images/${currentUser}_${Date.now()}_${imageFile.name}`);
+    let imageUrl: string | undefined = undefined;
+
+    const sendMessageToFirestore = async (finalImageUrl?: string) => {
         try {
-          const snapshot = await uploadBytes(imageRef, imageFile);
-          imageUrl = await getDownloadURL(snapshot.ref);
-        } catch (uploadError: any) {
-          console.error("Firebase Storage upload error:", uploadError);
-          let description = "Could not upload image. Please try again.";
-          if (uploadError.code === 'storage/unauthorized') {
-            description = "You do not have permission to upload files. Please check storage security rules."
-          }
-          toast({
-            title: "Image Upload Failed",
-            description: description,
-            variant: "destructive",
-          });
-          setIsSending(false);
-          return; // Stop the send process if upload fails
-        }
-      }
-  
-      const messageTextToSend = trimmedInput || ' ';
-      const encodedMessageText = encodeMessage(messageTextToSend);
-    
-      const replyingToData = replyingTo ? {
-        replyingToId: replyingTo.id,
-        replyingToText: getMessageText(replyingTo, 50),
-        replyingToSender: getDisplayName(replyingTo.sender),
-      } : {};
-      
-      const messageToStore: Omit<Message, 'id' | 'createdAt'> & { createdAt: any } = {
-        scrambledText: encodedMessageText,
-        sender: currentUser,
-        createdAt: serverTimestamp(),
-        isEncoded: true,
-        ...replyingToData,
-      };
+            const messageTextToSend = trimmedInput || ' '; // Send a space if only an image is present
+            const encodedMessageText = encodeMessage(messageTextToSend);
+            
+            const replyingToData = replyingTo ? {
+                replyingToId: replyingTo.id,
+                replyingToText: getMessageText(replyingTo, 50),
+                replyingToSender: getDisplayName(replyingTo.sender),
+            } : {};
+            
+            const messageToStore: Omit<Message, 'id' | 'createdAt'> & { createdAt: any } = {
+                scrambledText: encodedMessageText,
+                sender: currentUser,
+                createdAt: serverTimestamp(),
+                isEncoded: true,
+                ...replyingToData,
+            };
 
-      if (imageUrl) {
-        messageToStore.imageUrl = imageUrl;
-      }
-  
-      await addDoc(collection(db, "messages"), messageToStore);
+            if (finalImageUrl) {
+                messageToStore.imageUrl = finalImageUrl;
+            }
+        
+            await addDoc(collection(db, "messages"), messageToStore);
 
-      setInput("");
-      setReplyingTo(null);
-      cancelImagePreview();
-      
-    } catch (error: any) {
-      console.error("Error sending message:", error);
-      let description = "Could not send message. Please try again.";
-      if (error.code === 'permission-denied') {
-        description = "You don't have permission to send messages. Please check your security rules."
-      }
-  
-      toast({
-        title: "Error sending message",
-        description: description,
-        variant: "destructive",
-      });
-    } finally {
-        setIsSending(false);
-        if (inputRef.current) {
-            inputRef.current.style.height = "auto";
+            setInput("");
+            setReplyingTo(null);
+            cancelImagePreview();
+        } catch (error: any) {
+            console.error("Error sending message to Firestore:", error);
+            let description = "Could not send message. Please try again.";
+            if (error.code === 'permission-denied') {
+                description = "You don't have permission to send messages. Please check your security rules."
+            }
+        
+            toast({
+                title: "Error sending message",
+                description: description,
+                variant: "destructive",
+            });
+        } finally {
+            setIsSending(false);
+            if (inputRef.current) {
+                inputRef.current.style.height = "auto";
+            }
+            inputRef.current?.focus();
         }
-        inputRef.current?.focus();
+    };
+
+    if (imageFile) {
+        const imageRef = ref(storage, `chat_images/${currentUser}_${Date.now()}_${imageFile.name}`);
+        
+        uploadBytes(imageRef, imageFile)
+            .then(snapshot => {
+                return getDownloadURL(snapshot.ref);
+            })
+            .then(downloadURL => {
+                imageUrl = downloadURL;
+                sendMessageToFirestore(imageUrl);
+            })
+            .catch(uploadError => {
+                console.error("Firebase Storage upload error:", uploadError);
+                let description = "Could not upload image. Please try again.";
+                if (uploadError.code === 'storage/unauthorized') {
+                    description = "You do not have permission to upload files. Please check storage security rules."
+                }
+                toast({
+                    title: "Image Upload Failed",
+                    description: `${description} (Error: ${uploadError.code})`,
+                    variant: "destructive",
+                });
+                setIsSending(false); // Stop the process if upload fails
+            });
+    } else {
+        sendMessageToFirestore();
     }
-  };
+};
+
 
   const handleDeleteMessage = async () => {
     if (!deletingMessageId || !db) return;
