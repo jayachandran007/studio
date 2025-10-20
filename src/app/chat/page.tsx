@@ -120,30 +120,6 @@ export default function ChatPage() {
   }, [router]);
   
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        handleLogout();
-      }
-    };
-    
-    const handlePageHide = (event: PageTransitionEvent) => {
-      if (!event.persisted) {
-        handleLogout();
-      }
-    }
-
-    window.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('pagehide', handlePageHide);
-    window.addEventListener('blur', handleLogout);
-
-    return () => {
-      window.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('pagehide', handlePageHide);
-      window.removeEventListener('blur', handleLogout);
-    };
-  }, [handleLogout]);
-
-  useEffect(() => {
     const isAuthenticated = sessionStorage.getItem("isAuthenticated");
     const user = sessionStorage.getItem("currentUser");
     if (!isAuthenticated || !user) {
