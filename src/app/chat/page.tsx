@@ -427,11 +427,19 @@ export default function ChatPage() {
       }
     } catch (error: any) {
       console.error('Error getting notification permission:', error);
-      toast({
-        title: "Error Requesting Permission",
-        description: error.message || "An error occurred while requesting notification permission.",
-        variant: "destructive",
-      });
+       if (error.code === 'permission-denied' || error.code === 'messaging/permission-denied') {
+             toast({
+                title: 'Error Enabling Notifications',
+                description: 'Permission to receive notifications was denied. Please check your browser settings.',
+                variant: 'destructive',
+            });
+        } else {
+            toast({
+                title: "Error Requesting Permission",
+                description: error.message || "An error occurred while requesting notification permission.",
+                variant: "destructive",
+            });
+        }
     }
   };
 
@@ -453,21 +461,21 @@ export default function ChatPage() {
           </div>
         <main className="flex-1 overflow-hidden">
           <ScrollArea className="h-full" ref={scrollAreaRef}>
-            <div className="p-4 md:p-6" onClick={() => selectedMessageId && setSelectedMessageId(null)}>
+            <div className="px-4 md:px-6" onClick={() => selectedMessageId && setSelectedMessageId(null)}>
               
-              <div className="space-y-4">
+              <div className="space-y-4 py-4">
                 {messages.map((message) => (
                    <div
                     key={message.id}
                     id={message.id}
                     className={cn(
-                      "group flex gap-2",
+                      "group flex w-full gap-2",
                       message.sender === currentUser
                         ? "justify-end"
                         : "justify-start"
                     )}
                   >
-                    <div className="max-w-[75%]">
+                    <div className="max-w-[85%] w-auto">
                       <Popover open={selectedMessageId === message.id} onOpenChange={(isOpen) => {
                         if (!isOpen) setSelectedMessageId(null);
                       }}>
@@ -478,7 +486,7 @@ export default function ChatPage() {
                               handleMessageSelect(message);
                             }}
                             className={cn(
-                              "rounded-lg p-3 text-sm cursor-pointer",
+                              "rounded-lg p-3 text-sm cursor-pointer w-auto",
                               message.sender === currentUser
                                 ? "bg-primary text-primary-foreground"
                                 : "bg-card text-card-foreground",

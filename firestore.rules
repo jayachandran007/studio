@@ -3,17 +3,12 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Rules for messages
     match /messages/{messageId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.sender == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.sender == request.auth.uid;
+      allow read, create: if request.auth != null;
+      allow update, delete: if request.auth != null && resource.data.sender == request.auth.uid;
     }
-
-    // Rules for FCM tokens
-    match /fcmTokens/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && request.auth.uid == userId;
+     match /fcmTokens/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
