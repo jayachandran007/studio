@@ -4,6 +4,7 @@
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import { initializeAdminApp } from '@/firebase/admin-app';
+import { toast } from '@/hooks/use-toast';
 
 interface sendNotificationProps {
     message: string;
@@ -80,5 +81,10 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
         console.log(`Successfully sent notification to ${recipient}`);
     } catch (error) {
         console.error(`Error sending notification to ${recipient}:`, error);
+        toast({
+            title: "Error Sending Message",
+            description: "Error" + error,
+            variant: "destructive",
+          });
     }
 }
