@@ -110,6 +110,8 @@ export default function ChatPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  const [showNotificationButton, setShowNotificationButton] = useState(false);
+
   const isFilePickerOpen = useRef(false);
 
   const getDisplayName = useCallback((sender: string) => {
@@ -190,6 +192,15 @@ export default function ChatPage() {
 
     return () => unsubscribe();
   }, [currentUser, db, toast]);
+  
+    useEffect(() => {
+    isSupported().then(supported => {
+      if (supported && Notification.permission !== 'granted') {
+        setShowNotificationButton(true);
+      }
+    });
+  }, []);
+
 
   const scrollToBottom = useCallback(() => {
     const scrollArea = scrollAreaRef.current;
@@ -389,6 +400,7 @@ export default function ChatPage() {
       const permission = await Notification.requestPermission();
 
       if (permission === 'granted') {
+        setShowNotificationButton(false);
         toast({ title: "Success", description: "Notification permission granted." });
         const fcmToken = await getToken(messaging, { vapidKey: 'BL8V7BHhy6nE9WICeE09mNiKFC1u71vroAb3p7JyjFpI5n05yZvMx84o14MFE4O3944a8IDYKyh0dzR1bm5PouU' });
 
@@ -421,10 +433,12 @@ export default function ChatPage() {
     <>
       <div className="flex h-screen w-full flex-col bg-background">
          <div className="absolute top-2 right-2 z-10 flex gap-2">
-            <Button variant="ghost" size="sm" onClick={handleRequestPermission}>
-              <Bell className="h-4 w-4 mr-2" />
-              Enable Notifications
-            </Button>
+            {showNotificationButton && (
+                <Button variant="ghost" size="sm" onClick={handleRequestPermission}>
+                <Bell className="h-4 w-4 mr-2" />
+                Enable Notifications
+                </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
               Logout
