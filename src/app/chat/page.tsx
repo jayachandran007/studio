@@ -11,9 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Smile, X, Trash2, MessageSquareReply, Paperclip, LogOut, Bell } from "lucide-react";
+import { Loader2, Send, Smile, X, Trash2, MessageSquareReply, Paperclip, LogOut, Bell, MoreVertical } from "lucide-react";
 import { format } from "date-fns";
 import { useFirebase, useUser } from "@/firebase/provider";
 
@@ -449,17 +450,27 @@ export default function ChatPage() {
   return (
     <>
       <div className="flex h-screen w-full flex-col bg-background">
-         <div className="absolute top-2 right-2 z-10 flex gap-2">
-            {showNotificationButton && (
-                <Button variant="ghost" size="sm" onClick={handleRequestPermission}>
-                <Bell className="h-4 w-4 mr-2" />
-                Enable Notifications
+         <div className="absolute top-2 right-2 z-10">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-5 w-5" />
+                  <span className="sr-only">More options</span>
                 </Button>
-            )}
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {showNotificationButton && (
+                  <DropdownMenuItem onSelect={handleRequestPermission}>
+                    <Bell className="mr-2 h-4 w-4" />
+                    <span>Enable Notifications</span>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onSelect={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         <main className="flex-1 overflow-hidden">
           <ScrollArea className="h-full" ref={scrollAreaRef}>
@@ -670,5 +681,7 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
 
     
