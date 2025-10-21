@@ -424,7 +424,7 @@ export default function ChatPage() {
       console.error('Error getting notification permission:', error);
       toast({
         title: "Error",
-        description: "An error occurred while requesting notification permission.",
+        description: "An error occurred while requesting notification permission." + error,
         variant: "destructive",
       });
     }
