@@ -64,6 +64,7 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
     const randomFact = randomFacts[Math.floor(Math.random() * randomFacts.length)];
 
     const payload = {
+        tokens: [fcmToken],
         notification: {
             title: 'Fun facts',
             body: randomFact,
@@ -88,7 +89,6 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
                 },
             },
         },
-        token: fcmToken,
     };
 
     try {
