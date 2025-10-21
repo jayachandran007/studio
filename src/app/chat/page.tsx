@@ -440,10 +440,10 @@ export default function ChatPage() {
                     key={message.id}
                     id={message.id}
                     className={cn(
-                      "group flex w-full items-start gap-3",
+                      "group flex w-full flex-col",
                       getDisplayName(message.sender) === getDisplayName(currentUser!)
-                        ? "justify-end"
-                        : "justify-start"
+                        ? "items-end"
+                        : "items-start"
                     )}
                   >
                     <Popover open={selectedMessageId === message.id} onOpenChange={(isOpen) => {
@@ -641,3 +641,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
