@@ -468,14 +468,9 @@ export default function ChatPage() {
                    <div
                     key={message.id}
                     id={message.id}
-                    className={cn(
-                      "group flex w-full gap-2",
-                      message.sender === currentUser
-                        ? "justify-end"
-                        : "justify-start"
-                    )}
+                    className="group flex w-full"
                   >
-                    <div className="max-w-[85%] w-auto">
+                    <div className={cn("flex w-full items-start gap-3", message.sender === currentUser && "ml-auto")}>
                       <Popover open={selectedMessageId === message.id} onOpenChange={(isOpen) => {
                         if (!isOpen) setSelectedMessageId(null);
                       }}>
@@ -672,3 +667,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
