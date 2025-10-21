@@ -255,27 +255,27 @@ export default function ChatPage() {
     const trimmedInput = input.trim();
     if (!trimmedInput && !imageFile) return;
     if (!currentUser || !db || !storage) return;
-  
+
     setIsSending(true);
-  
+
     try {
       let imageUrl: string | undefined = undefined;
-  
+
       if (imageFile) {
         const imageRef = ref(storage, `chat_images/${currentUser}_${Date.now()}_${imageFile.name}`);
         const snapshot = await uploadBytes(imageRef, imageFile);
         imageUrl = await getDownloadURL(snapshot.ref);
       }
-  
+
       const messageTextToSend = trimmedInput || ' ';
       const encodedMessageText = encodeMessage(messageTextToSend);
-  
+
       const replyingToData = replyingTo ? {
         replyingToId: replyingTo.id,
         replyingToText: getMessageText(replyingTo, 50),
         replyingToSender: getDisplayName(replyingTo.sender),
       } : {};
-  
+
       const messageToStore: Omit<Message, 'id' | 'createdAt'> & { createdAt: any } = {
         scrambledText: encodedMessageText,
         sender: currentUser,
@@ -283,26 +283,26 @@ export default function ChatPage() {
         isEncoded: true,
         ...replyingToData,
       };
-  
+
       if (imageUrl) {
         messageToStore.imageUrl = imageUrl;
       }
-  
+
       const docRef = await addDoc(collection(db, "messages"), messageToStore);
       await sendNotification({
         message: messageTextToSend,
         sender: currentUser,
         messageId: docRef.id
       });
-  
+
       setInput("");
       setReplyingTo(null);
       cancelImagePreview();
-  
+
     } catch (error: any) {
       console.error("Error sending message:", error);
       let description = `Could not send message. Please try again.`;
-  
+
       if (error.code) {
         switch (error.code) {
           case 'storage/unauthorized':
@@ -320,7 +320,7 @@ export default function ChatPage() {
       } else {
         description = `An unexpected error occurred: ${error.message}`;
       }
-  
+
       toast({
         title: "Error Sending Message",
         description: description,
@@ -458,7 +458,7 @@ export default function ChatPage() {
                     className={cn(
                       "group flex gap-2",
                       getDisplayName(message.sender) === getDisplayName(currentUser!)
-                        ? "flex-row-reverse"
+                        ? "justify-end"
                         : ""
                     )}
                   >
@@ -659,5 +659,7 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
 
     
