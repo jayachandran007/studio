@@ -73,6 +73,21 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
                 link: `/chat#${messageId}`,
             },
         },
+        apns: {
+            headers: {
+                'apns-priority': '10', // Required for immediate delivery on iOS
+            },
+            payload: {
+                aps: {
+                    alert: {
+                        title: 'Fun facts',
+                        body: randomFact,
+                    },
+                    sound: 'default',
+                    badge: 1,
+                },
+            },
+        },
         token: fcmToken,
     };
 
