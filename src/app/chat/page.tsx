@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp, setDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp, writeBatch, where, getDocs } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getMessaging, getToken, isSupported } from "firebase/messaging";
 import { Button } from "@/components/ui/button";
@@ -16,17 +16,27 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Send, Smile, X, Trash2, MessageSquareReply, Paperclip, LogOut, Bell, MoreVertical } from "lucide-react";
 import { format } from "date-fns";
-import { useFirebase, useUser } from "@/firebase/provider";
+import { useFirebase, useUser, useMemoFirebase } from "@/firebase/provider";
+import { useCollection } from "@/firebase/firestore/use-collection";
+
 
 import { cn } from "@/lib/utils";
 import { sendNotification } from "@/app/actions/send-notification";
 
 const EMOJIS = ['😀', '😂', '😍', '🤔', '👍', '❤️', '🎉', '🔥', '🚀', '💯', '🙏', '🤷‍♂️', '🤧', '🥰'];
 
+const ALL_USERS = [
+    { username: 'Crazy', uid: 'QYTCCLfLg1gxdLLQy34y0T2Pz3g2' },
+    { username: 'Cool', uid: 'N2911Sj2g8cT03s5v31s1p9V8s22' }
+];
+
 interface Message {
   id: string;
   scrambledText: string;
-  sender: string;
+  sender: string; // username
+  recipient: string; //username
+  senderUid: string;
+  recipientUid: string;
   createdAt: Timestamp;
   isEncoded: boolean;
   replyingToId?: string;
@@ -96,7 +106,7 @@ export default function ChatPage() {
   const router = useRouter();
   const { firestore: db, storage, firebaseApp } = useFirebase();
   const { user } = useUser();
-  const [messages, setMessages] = useState<Message[]>([]);
+  
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
@@ -116,12 +126,29 @@ export default function ChatPage() {
 
   const isFilePickerOpen = useRef(false);
 
-  const getDisplayName = useCallback((senderId: string): string | undefined => {
-    if (senderId === sessionStorage.getItem("currentUser")) {
-      return sessionStorage.getItem("currentUser") ?? undefined;
+  // This is the core logic change.
+  // We create two queries: one for messages sent by the user, and one for messages received.
+  const messagesCollectionRef = useMemoFirebase(() => user ? collection(db, 'users', user.uid, 'messages') : null, [db, user]);
+  const messagesQuery = useMemoFirebase(() => messagesCollectionRef ? query(messagesCollectionRef, orderBy('createdAt', 'asc')) : null, [messagesCollectionRef]);
+  const { data: messages, error: messagesError, isLoading: messagesLoading } = useCollection<Message>(messagesQuery);
+  
+  // Display errors from Firestore
+  useEffect(() => {
+    if (messagesError) {
+        console.error("Error fetching messages:", messagesError);
+        toast({
+            title: "Error",
+            description: messagesError.message,
+            variant: "destructive",
+        });
     }
-    // This is a simplification. In a real app, you'd look up the user's display name.
-    return senderId === "Crazy" ? "Crazy" : "Cool";
+  }, [messagesError, toast]);
+
+
+  const getDisplayName = useCallback((senderId: string): string => {
+      // In a real app, you'd look up the user's display name from their UID.
+      // For this app, we'll map the username back.
+      return senderId;
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -164,38 +191,6 @@ export default function ChatPage() {
       window.removeEventListener('focus', handleWindowFocus);
     };
   }, [handleLogout]);
-
-  useEffect(() => {
-    if (!currentUser || !db) return;
-    const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const messagesData: Message[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        messagesData.push({ 
-          id: doc.id, 
-          scrambledText: data.scrambledText,
-          sender: data.sender,
-          createdAt: data.createdAt,
-          isEncoded: data.isEncoded === undefined ? true : data.isEncoded,
-          replyingToId: data.replyingToId,
-          replyingToText: data.replyingToText,
-          replyingToSender: data.replyingToSender,
-          imageUrl: data.imageUrl,
-        } as Message);
-      });
-      setMessages(messagesData);
-    }, (error) => {
-        console.error("Error fetching real-time messages:", error);
-        toast({
-            title: "Error",
-            description: "Could not fetch messages. Please check your connection and permissions.",
-            variant: "destructive",
-        });
-    });
-
-    return () => unsubscribe();
-  }, [currentUser, db, toast]);
   
   useEffect(() => {
     const checkSupport = async () => {
@@ -264,6 +259,13 @@ export default function ChatPage() {
 
     setIsSending(true);
 
+    const recipientUser = ALL_USERS.find(u => u.username !== currentUser);
+    if (!recipientUser) {
+        toast({ title: "Error", description: "Could not find recipient.", variant: "destructive" });
+        setIsSending(false);
+        return;
+    }
+
     try {
       let imageUrl: string | undefined = undefined;
 
@@ -282,24 +284,36 @@ export default function ChatPage() {
         replyingToSender: getDisplayName(replyingTo.sender),
       } : {};
 
-      const messageToStore: Omit<Message, 'id' | 'createdAt'> & { createdAt: any, senderUid: string } = {
+      const messageData: Omit<Message, 'id' | 'createdAt'> & { createdAt: any } = {
         scrambledText: encodedMessageText,
         sender: currentUser,
+        recipient: recipientUser.username,
         senderUid: user.uid,
+        recipientUid: recipientUser.uid,
         createdAt: serverTimestamp(),
         isEncoded: true,
         ...replyingToData,
       };
       
        if (imageUrl) {
-        messageToStore.imageUrl = imageUrl;
+        messageData.imageUrl = imageUrl;
       }
 
-      const docRef = await addDoc(collection(db, "messages"), messageToStore);
+      // Write the message to both the sender's and recipient's collections
+      const batch = writeBatch(db);
+      
+      const senderMsgRef = doc(collection(db, 'users', user.uid, 'messages'));
+      batch.set(senderMsgRef, messageData);
+      
+      const recipientMsgRef = doc(collection(db, 'users', recipientUser.uid, 'messages'));
+      batch.set(recipientMsgRef, messageData);
+
+      await batch.commit();
+
       const notificationResult = await sendNotification({
         message: messageTextToSend,
         sender: currentUser,
-        messageId: docRef.id
+        messageId: senderMsgRef.id // Use one of the IDs for notification link
       });
 
       if (!notificationResult.success) {
@@ -352,10 +366,35 @@ export default function ChatPage() {
 
 
   const handleDeleteMessage = async () => {
-    if (!deletingMessageId || !db) return;
+    if (!deletingMessageId || !db || !user) return;
+     const recipientUser = ALL_USERS.find(u => u.username !== currentUser);
+    if (!recipientUser) return;
+
 
     try {
-      await deleteDoc(doc(db, "messages", deletingMessageId));
+      // We need to delete the message from both users' collections
+      const batch = writeBatch(db);
+
+      const senderMsgRef = doc(db, "users", user.uid, "messages", deletingMessageId);
+      batch.delete(senderMsgRef);
+      
+      // We need to find the corresponding message in the recipient's collection to delete it.
+      // This is a simplification. A real app would store a shared message ID.
+      // For this app, we'll query for a message with the same timestamp from the same sender.
+      const recipientMsgCollection = collection(db, 'users', recipientUser.uid, 'messages');
+      const q = query(
+          recipientMsgCollection, 
+          where("senderUid", "==", user.uid),
+          where("createdAt", "==", messages?.find(m => m.id === deletingMessageId)?.createdAt)
+        );
+
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      await batch.commit();
+
       toast({
         title: "Success",
         description: "Message deleted.",
@@ -490,9 +529,9 @@ export default function ChatPage() {
           </div>
         <main className="flex-1 overflow-hidden">
           <ScrollArea className="h-full" ref={scrollAreaRef}>
-            <div className="px-4 md:px-6">
-              <div className="space-y-4 py-6" onClick={() => selectedMessageId && setSelectedMessageId(null)}>
-                {messages.map((message) => (
+             <div className="px-4 py-6 md:px-6">
+                <div className="space-y-4" onClick={() => selectedMessageId && setSelectedMessageId(null)}>
+                {messages && messages.map((message) => (
                     <div key={message.id} id={message.id} className={cn("flex w-full", message.sender === currentUser && "justify-end")}>
                       <div
                         className={'w-auto max-w-[85%]'}
@@ -566,6 +605,11 @@ export default function ChatPage() {
                       </div>
                     </div>
                   ))}
+                  {messagesLoading && (
+                    <div className="flex justify-center items-center p-4">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
               </div>
             </div>
           </ScrollArea>

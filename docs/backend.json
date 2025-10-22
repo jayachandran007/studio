@@ -38,11 +38,19 @@
         },
         "senderId": {
           "type": "string",
-          "description": "Reference to the User who sent the message. (Relationship: User 1:N ChatMessage)"
+          "description": "The username of the User who sent the message."
         },
         "recipientId": {
           "type": "string",
-          "description": "Reference to the User who is the recipient of the message. (Relationship: User 1:N ChatMessage)"
+          "description": "The username of the User who is the recipient of the message."
+        },
+        "senderUid": {
+          "type": "string",
+          "description": "The UID of the User who sent the message. (Relationship: User 1:N ChatMessage)"
+        },
+        "recipientUid": {
+          "type": "string",
+          "description": "The UID of the User who is the recipient of the message. (Relationship: User 1:N ChatMessage)"
         },
         "originalMessage": {
           "type": "string",
@@ -66,6 +74,8 @@
         "id",
         "senderId",
         "recipientId",
+        "senderUid",
+        "recipientUid",
         "originalMessage",
         "scrambledMessage",
         "timestamp",
@@ -104,11 +114,11 @@
           "schema": {
             "$ref": "#/backend/entities/ChatMessage"
           },
-          "description": "Stores chat messages for a specific user. Only the sender and recipient (defined by senderId and recipientId fields) can read/write messages.  The path `/users/{userId}` denotes the user that has access. Security rules will ensure that either request.auth.uid == resource.data.senderId OR request.auth.uid == resource.data.recipientId. Requires a composite index on `senderId` and `recipientId`.",
+          "description": "Stores chat messages for a specific user. This collection acts as an 'inbox' or 'outbox'. Any message where the user is either the sender or receiver is duplicated and stored here. This enables security rules where a user can only read from their own message collection. Requires composite indexes on (`senderUid`, `createdAt`) and (`recipientUid`, `createdAt`).",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user who either sent or received the message. Must match either `senderId` or `recipientId` in the message data."
+              "description": "The unique identifier for the user who owns this message collection. Must match request.auth.uid."
             },
             {
               "name": "messageId",
@@ -118,6 +128,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to provide a secure and scalable solution for the CipherChat application, focusing on private user data and messaging. The key principle is Authorization Independence, achieved through path-based ownership and avoiding `get()` calls in security rules. Data is segregated to ensure each collection has a homogeneous security posture, simplifying rules and improving maintainability. \n\nUsers are stored at the `/users/{userId}` path, ensuring only the authenticated user can access their data.  Messages are stored within a subcollection `/users/{userId}/messages/{messageId}`. This structure enables straightforward security rules based on path ownership, ensuring that only the sender and recipient have access to a message's content.\n\nThis design supports the QAPs (Rules are not Filters) by ensuring that `list` operations can be securely performed within the `/users/{userId}/messages` collection, as access is determined by path-based ownership."
+    "reasoning": "The Firestore structure is designed to provide a secure and scalable solution for the CipherChat application, focusing on private user data and messaging. The key principle is Authorization Independence, achieved through path-based ownership and avoiding `get()` calls in security rules. Data is segregated to ensure each collection has a homogeneous security posture, simplifying rules and improving maintainability. \n\nUsers are stored at the `/users/{userId}` path, ensuring only the authenticated user can access their data.  Messages are stored within a subcollection `/users/{userId}/messages/{messageId}`. This structure enables straightforward security rules based on path ownership, ensuring that a user can only read from their own subcollection. To facilitate this, messages are duplicated: one copy is written to the sender's subcollection and another to the recipient's, allowing both parties to have access without compromising security.\n\nThis design supports the QAPs (Rules are not Filters) by ensuring that `list` operations can be securely performed within the `/users/{userId}/messages` collection, as access is determined by path-based ownership."
   }
 }

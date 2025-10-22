@@ -29,6 +29,11 @@ const randomFacts = [
     "Sea otters hold hands when they sleep so they don't float away."
 ];
 
+const ALL_USERS = [
+    { username: 'Crazy', uid: 'QYTCCLfLg1gxdLLQy34y0T2Pz3g2' },
+    { username: 'Cool', uid: 'N2911Sj2g8cT03s5v31s1p9V8s22' }
+];
+
 export async function sendNotification({ message, sender, messageId }: sendNotificationProps): Promise<NotificationResult> {
     const adminApp = await initializeAdminApp();
     if (!adminApp) {
@@ -39,9 +44,8 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
 
     const { firestore, app } = adminApp;
     const messaging = getMessaging(app);
-
-    const users = ['Cool', 'Crazy'];
-    const recipient = users.find(user => user !== sender);
+    
+    const recipient = ALL_USERS.find(user => user.username !== sender);
 
     if (!recipient) {
         const errorMsg = 'No recipient found to send notification.';
@@ -51,14 +55,14 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
     
     const tokensCollection = firestore.collection('fcmTokens');
     const querySnapshot = await tokensCollection
-      .where('username', '==', recipient)
+      .where('username', '==', recipient.username)
       .orderBy('createdAt', 'desc')
       .limit(1)
       .get();
 
 
     if (querySnapshot.empty) {
-        const errorMsg = `No FCM token document found for username: ${recipient}`;
+        const errorMsg = `No FCM token document found for username: ${recipient.username}`;
         console.log(errorMsg);        
         return { success: false, error: errorMsg };
     }
@@ -67,7 +71,7 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
     const fcmToken = tokenDoc.data()?.token;
 
     if (!fcmToken) {
-        const errorMsg = `FCM token is empty for user: ${recipient}`;
+        const errorMsg = `FCM token is empty for user: ${recipient.username}`;
         console.log(errorMsg);        
         return { success: false, error: errorMsg };
     }
@@ -104,10 +108,10 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
 
     try {
         await messaging.sendEachForMulticast(payload);
-        console.log(`Successfully sent notification to ${recipient}`);
+        console.log(`Successfully sent notification to ${recipient.username}`);
         return { success: true };
     } catch (error: any) {
-        const errorMsg = `Error sending notification to ${recipient}: ${error.message}`;
+        const errorMsg = `Error sending notification to ${recipient.username}: ${error.message}`;
         console.error(errorMsg);        
         return { success: false, error: errorMsg };
     }
