@@ -1,14 +1,84 @@
+/**
+ * @fileoverview Firestore Security Rules for CipherChat application.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model, ensuring that users can only
+ * access their own profile data and messages directly related to them. It focuses
+ * on private user data and messaging. Authorization Independence is a key principle.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profiles, accessible only by the authenticated user.
+ * - /users/{userId}/messages/{messageId}: Stores chat messages. Access is restricted to
+ *   the sender and recipient of the message. The userId path parameter must match either
+ *   the senderId or recipientId in the message data.
+ *
+ * Key Security Decisions:
+ * - User listing is disallowed.
+ * - Rules are not filters: `list` operations are secured based on path-based ownership.
+ *
+ * Denormalization for Authorization:
+ * - Messages are stored under `/users/{userId}/messages/{messageId}`, where `userId` must
+ *   match either the `senderId` or `recipientId` in the message data. This denormalization
+ *   enables efficient rules without needing additional `get()` calls.
+ */
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /messages/{messageId} {
-      allow read, create: if request.auth != null;
-      allow update, delete: if request.auth != null && resource.data.sender == request.auth.uid;
+
+    /**
+     * @description Controls access to user profiles.
+     * @path /users/{userId}
+     * @allow (create) - User with UID 'user_abc' can create their own profile at /users/user_abc if the document id matches their UID.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, or delete their own profile at /users/user_abc.
+     * @deny (create) - User with UID 'user_xyz' cannot create a profile for 'user_abc' at /users/user_abc.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the profile of 'user_abc' at /users/user_abc.
+     * @principle Enforces document ownership, restricting access to the authenticated user's own profile.
+     */
+    match /users/{userId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
     }
 
-    match /fcmTokens/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    /**
+     * @description Controls access to chat messages for a specific user.
+     * @path /users/{userId}/messages/{messageId}
+     * @allow (create) - User with UID 'user_abc' can create a message in /users/user_abc/messages/message1 if they are the sender or recipient.
+     * @allow (get, list, update, delete) - User with UID 'user_abc' can read, list, update, or delete a message in /users/user_abc/messages/message1 if they are the sender or recipient.
+     * @deny (create) - User with UID 'user_xyz' cannot create a message in /users/user_abc/messages/message1 on behalf of 'user_abc'.
+     * @deny (get, list, update, delete) - User with UID 'user_xyz' cannot read, list, update, or delete messages in /users/user_abc/messages/message1 that do not belong to them.
+     * @principle Enforces document ownership and access control based on sender/recipient relationship.
+     */
+    match /users/{userId}/messages/{messageId} {
+      function isSenderOrRecipient(userId) {
+        return request.auth.uid == userId && (request.auth.uid == request.resource.data.senderId || request.auth.uid == request.resource.data.recipientId);
+      }
+
+      function isExistingSenderOrRecipient(userId) {
+        return isSenderOrRecipient(userId) && resource != null;
+      }
+
+      function isValidRelationship(userId) {
+        return userId == request.resource.data.senderId || userId == request.resource.data.recipientId;
+      }
+
+      allow get: if request.auth.uid == userId;
+      allow list: if request.auth.uid == userId;
+
+      allow create: if isSenderOrRecipient(userId) && isValidRelationship(userId) && (request.resource.data.senderId == request.auth.uid || request.resource.data.recipientId == request.auth.uid);
+      allow update: if isExistingSenderOrRecipient(userId) && (resource.data.senderId == request.auth.uid || resource.data.recipientId == request.auth.uid);
+      allow delete: if isExistingSenderOrRecipient(userId) && (resource.data.senderId == request.auth.uid || resource.data.recipientId == request.auth.uid);
     }
   }
 }

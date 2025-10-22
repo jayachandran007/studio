@@ -40,56 +40,36 @@
           "type": "string",
           "description": "Reference to the User who sent the message. (Relationship: User 1:N ChatMessage)"
         },
-        "receiverId": {
+        "recipientId": {
           "type": "string",
-          "description": "Reference to the User who received the message. (Relationship: User 1:N ChatMessage)"
+          "description": "Reference to the User who is the recipient of the message. (Relationship: User 1:N ChatMessage)"
         },
-        "originalText": {
+        "originalMessage": {
           "type": "string",
           "description": "The original, un-scrambled message text."
         },
-        "scrambledText": {
+        "scrambledMessage": {
           "type": "string",
           "description": "The scrambled version of the message."
         },
-        "scrambleMethod": {
-          "type": "string",
-          "description": "The method used to scramble the message (e.g., letter substitution, reverse)."
-        },
         "timestamp": {
           "type": "string",
-          "description": "Timestamp of when the message was sent.",
+          "description": "The date and time when the message was sent.",
           "format": "date-time"
+        },
+        "scrambleMethod": {
+          "type": "string",
+          "description": "The scrambling method used for this message (e.g., letter substitution, reverse)."
         }
       },
       "required": [
         "id",
         "senderId",
-        "receiverId",
-        "originalText",
-        "scrambledText",
-        "scrambleMethod",
-        "timestamp"
-      ]
-    },
-    "FCMToken": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "FCMToken",
-      "type": "object",
-      "description": "Stores a user's Firebase Cloud Messaging token for push notifications.",
-      "properties": {
-        "username": {
-          "type": "string",
-          "description": "The username of the user who owns the token."
-        },
-        "token": {
-          "type": "string",
-          "description": "The FCM registration token."
-        }
-      },
-      "required": [
-        "username",
-        "token"
+        "recipientId",
+        "originalMessage",
+        "scrambledMessage",
+        "timestamp",
+        "scrambleMethod"
       ]
     }
   },
@@ -108,72 +88,36 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profiles. The document ID is the user's unique ID.",
+          "description": "Stores user profiles. Only the authenticated user can read/write their own profile. Includes standard profile information (username, email).",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier of the user."
+              "description": "The unique identifier for the user.  Matches request.auth.uid."
             }
           ]
         }
       },
       {
-        "path": "/users/{senderId}/messages/{messageId}",
+        "path": "/users/{userId}/messages/{messageId}",
         "definition": {
           "entityName": "ChatMessage",
           "schema": {
             "$ref": "#/backend/entities/ChatMessage"
           },
-          "description": "Stores chat messages. Includes denormalized 'senderId' and 'receiverId' for authorization independence.",
-          "params": [
-            {
-              "name": "senderId",
-              "description": "The unique identifier of the message sender."
-            },
-            {
-              "name": "messageId",
-              "description": "The unique identifier of the chat message."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{receiverId}/messages/{messageId}",
-        "definition": {
-          "entityName": "ChatMessage",
-          "schema": {
-            "$ref": "#/backend/entities/ChatMessage"
-          },
-          "description": "Stores chat messages. Includes denormalized 'senderId' and 'receiverId' for authorization independence.",
-          "params": [
-            {
-              "name": "receiverId",
-              "description": "The unique identifier of the message receiver."
-            },
-            {
-              "name": "messageId",
-              "description": "The unique identifier of the chat message."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/fcmTokens/{userId}",
-        "definition": {
-          "entityName": "FCMToken",
-          "schema": {
-            "$ref": "#/backend/entities/FCMToken"
-          },
-          "description": "Stores FCM tokens for users. The document ID is the user's unique ID (username in this case).",
+          "description": "Stores chat messages for a specific user. Only the sender and recipient (defined by senderId and recipientId fields) can read/write messages.  The path `/users/{userId}` denotes the user that has access. Security rules will ensure that either request.auth.uid == resource.data.senderId OR request.auth.uid == resource.data.recipientId. Requires a composite index on `senderId` and `recipientId`.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier of the user."
+              "description": "The unique identifier for the user who either sent or received the message. Must match either `senderId` or `recipientId` in the message data."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier for the chat message."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore data structure is designed to ensure authorization independence, clarity, and scalability for the CipherChat application. The primary focus is on securing chat messages between users. We leverage path-based ownership and denormalization to achieve these goals.\n\n1.  **User Data:** User profiles are stored in `/users/{userId}`. This allows straightforward management of user data and aligns with path-based ownership. Each document stores user's profile information.\n\n2.  **Chat Messages:** Chat messages are stored in a subcollection `/users/{senderId}/messages/{messageId}` and `/users/{receiverId}/messages/{messageId}`. This approach ensures that only the involved users can access these messages. The design copies `senderId` and `receiverId` into each message document to make authorization independent of parent document reads. List operations are secure, as rules can efficiently filter messages based on `request.auth.uid`.\n\n3.  **FCM Tokens:** FCM tokens are stored in `/fcmTokens/{userId}`. This allows the server to easily query for a user's token to send push notifications. Security rules ensure that users can only write their own token.\n\nThis structure supports atomic operations (transactions/batches) because no `get()` calls are needed in the security rules to authorize operations on message documents. The intent is clear: only the sender and receiver have access to the message. Security rules can be easily debugged because authorization logic is based on `request.auth.uid` and the document's `senderId` and `receiverId`.\n\nQAPs are satisfied because each message document explicitly stores the `senderId` and `receiverId`, allowing rules to filter messages based on these attributes without relying on parent document reads. This enables secure `list` operations, as the rules can verify that `request.auth.uid` matches either the `senderId` or the `receiverId`."
+    "reasoning": "The Firestore structure is designed to provide a secure and scalable solution for the CipherChat application, focusing on private user data and messaging. The key principle is Authorization Independence, achieved through path-based ownership and avoiding `get()` calls in security rules. Data is segregated to ensure each collection has a homogeneous security posture, simplifying rules and improving maintainability. \n\nUsers are stored at the `/users/{userId}` path, ensuring only the authenticated user can access their data.  Messages are stored within a subcollection `/users/{userId}/messages/{messageId}`. This structure enables straightforward security rules based on path ownership, ensuring that only the sender and recipient have access to a message's content.\n\nThis design supports the QAPs (Rules are not Filters) by ensuring that `list` operations can be securely performed within the `/users/{userId}/messages` collection, as access is determined by path-based ownership."
   }
 }
