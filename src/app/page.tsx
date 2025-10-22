@@ -115,7 +115,7 @@ export default function DisguisedLoginPage() {
     } catch (error) {
       console.error("Sign-in failed:", error);
       // Fallback redirect to maintain disguise
-      router.push("https://news.google.com");
+      //router.push("https://news.google.com");
     }
   }, [router, auth]);
   
