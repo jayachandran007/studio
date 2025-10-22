@@ -16,19 +16,6 @@ interface NotificationResult {
     error?: string;
 }
 
-const randomFacts = [
-    "A single cloud can weigh more than 1 million pounds.",
-    "A group of flamingos is called a 'flamboyance'.",
-    "The inventor of the frisbee was turned into a frisbee after he died.",
-    "Honey never spoils.",
-    "There are more fake flamingos in the world than real ones.",
-    "A shrimp's heart is in its head.",
-    "It is impossible for most people to lick their own elbow.",
-    "A crocodile cannot stick its tongue out.",
-    "The national animal of Scotland is the unicorn.",
-    "Sea otters hold hands when they sleep so they don't float away."
-];
-
 const ALL_USERS = [
     { username: 'Crazy', uid: 'QYTCCLfLg1gxdLLQy34y0T2Pz3g2' },
     { username: 'Cool', uid: 'N2911Sj2g8cT03s5v31s1p9V8s22' }
@@ -76,13 +63,11 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
         return { success: false, error: errorMsg };
     }
     
-    const randomFact = randomFacts[Math.floor(Math.random() * randomFacts.length)];
-
     const payload: MulticastMessage = {
         tokens: [fcmToken],
         notification: {
-            title: 'Fun facts',
-            body: randomFact,
+            title: 'New Message',
+            body: message,
         },
         webpush: {
             fcmOptions: {
@@ -96,8 +81,8 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
             payload: {
                 aps: {
                     alert: {
-                        title: 'Fun facts',
-                        body: randomFact,
+                        title: 'New Message',
+                        body: message,
                     },
                     sound: 'default',
                     badge: 1,
