@@ -16,7 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Send, Smile, X, Trash2, MessageSquareReply, Paperclip, LogOut, Bell, MoreVertical } from "lucide-react";
 import { format } from "date-fns";
-import { useFirebase, useUser, useMemoFirebase } from "@/firebase/provider";
+import { useFirebase, useMemoFirebase } from "@/firebase/provider";
 import { useCollection } from "@/firebase/firestore/use-collection";
 
 
@@ -104,7 +104,7 @@ const LinkifiedText = ({ text }: { text: string }) => {
 
 export default function ChatPage() {
   const router = useRouter();
-  const { firestore: db, storage, firebaseApp, user } = useFirebase(); // We still need user for UID
+  const { firestore: db, storage, firebaseApp } = useFirebase();
   
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -736,3 +736,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
