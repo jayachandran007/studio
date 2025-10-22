@@ -146,7 +146,7 @@ export default function ChatPage() {
       if (isFilePickerOpen.current) {
         return;
       }
-      // handleLogout();
+      handleLogout();
     };
 
     const handleWindowFocus = () => {
@@ -454,7 +454,7 @@ export default function ChatPage() {
   return (
     <>
       <div className="flex h-screen w-full flex-col bg-background">
-         <div className="absolute top-2 right-2 z-10">
+      <div className="absolute top-2 right-2 z-10">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -486,7 +486,7 @@ export default function ChatPage() {
                     key={message.id}
                     id={message.id}
                     className={cn(
-                      "flex w-full",
+                      "flex",
                       message.sender === currentUser ? "justify-end" : "justify-start"
                     )}
                   >
