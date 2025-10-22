@@ -81,7 +81,7 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
             body: randomFact,
         },
         webpush: {
-            fcm_options: {
+            fcmOptions: {
                 link: `/chat#${messageId}`,
             },
         },
