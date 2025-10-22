@@ -99,28 +99,24 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profiles. Only the authenticated user can read/write their own profile. Includes standard profile information (username, email).",
+          "description": "Stores user profiles. Data is public.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user.  Matches request.auth.uid."
+              "description": "The unique identifier for the user."
             }
           ]
         }
       },
       {
-        "path": "/users/{userId}/messages/{messageId}",
+        "path": "/messages/{messageId}",
         "definition": {
           "entityName": "ChatMessage",
           "schema": {
             "$ref": "#/backend/entities/ChatMessage"
           },
-          "description": "Stores chat messages for a specific user. This collection acts as an 'inbox' or 'outbox'. Any message where the user is either the sender or receiver is duplicated and stored here. This enables security rules where a user can only read from their own message collection. Requires composite indexes on (`senderUid`, `createdAt`) and (`recipientUid`, `createdAt`).",
+          "description": "Stores all chat messages. Data is public.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user who owns this message collection. Must match request.auth.uid."
-            },
             {
               "name": "messageId",
               "description": "The unique identifier for the chat message."
@@ -129,6 +125,8 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to provide a secure and scalable solution for the CipherChat application, focusing on private user data and messaging. The key principle is Authorization Independence, achieved through path-based ownership and avoiding `get()` calls in security rules. Data is segregated to ensure each collection has a homogeneous security posture, simplifying rules and improving maintainability. \n\nUsers are stored at the `/users/{userId}` path, ensuring only the authenticated user can access their data.  Messages are stored within a subcollection `/users/{userId}/messages/{messageId}`. This structure enables straightforward security rules based on path ownership, ensuring that a user can only read from their own subcollection. To facilitate this, messages are duplicated: one copy is written to the sender's subcollection and another to the recipient's, allowing both parties to have access without compromising security.\n\nThis design supports the QAPs (Rules are not Filters) by ensuring that `list` operations can be securely performed within the `/users/{userId}/messages` collection, as access is determined by path-based ownership."
+    "reasoning": "The Firestore structure is simplified for a two-user prototype where strict security is not a requirement. All data in the 'users' and 'messages' collections are public to allow for easy reading and writing without complex authentication checks. This model is suitable for rapid prototyping but should be secured before moving to a production environment with more users."
   }
 }
+
+    

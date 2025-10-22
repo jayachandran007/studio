@@ -127,9 +127,8 @@ export default function ChatPage() {
 
   const currentUserObject = useMemo(() => ALL_USERS.find(u => u.username === currentUser), [currentUser]);
 
-  // This is the core logic change.
-  // We create two queries: one for messages sent by the user, and one for messages received.
-  const messagesCollectionRef = useMemoFirebase(() => currentUserObject ? collection(db, 'users', currentUserObject.uid, 'messages') : null, [db, currentUserObject]);
+  // With open rules, we can just fetch all messages from a single root collection.
+  const messagesCollectionRef = useMemoFirebase(() => db ? collection(db, 'messages') : null, [db]);
   const messagesQuery = useMemoFirebase(() => messagesCollectionRef ? query(messagesCollectionRef, orderBy('createdAt', 'asc')) : null, [messagesCollectionRef]);
   const { data: messages, error: messagesError, isLoading: messagesLoading } = useCollection<Message>(messagesQuery);
   
@@ -292,22 +291,14 @@ export default function ChatPage() {
        if (imageUrl) {
         messageData.imageUrl = imageUrl;
       }
-
-      // Write the message to both the sender's and recipient's collections
-      const batch = writeBatch(db);
       
-      const senderMsgRef = doc(collection(db, 'users', currentUserObject.uid, 'messages'));
-      batch.set(senderMsgRef, messageData);
-      
-      const recipientMsgRef = doc(collection(db, 'users', recipientUser.uid, 'messages'));
-      batch.set(recipientMsgRef, messageData);
-
-      await batch.commit();
+      const messagesCollection = collection(db, 'messages');
+      const docRef = await addDoc(messagesCollection, messageData);
 
       const notificationResult = await sendNotification({
         message: messageTextToSend,
         sender: currentUser,
-        messageId: senderMsgRef.id // Use one of the IDs for notification link
+        messageId: docRef.id
       });
 
       if (!notificationResult.success) {
@@ -360,39 +351,11 @@ export default function ChatPage() {
 
 
   const handleDeleteMessage = async () => {
-    if (!deletingMessageId || !db || !currentUserObject) return;
-     const recipientUser = ALL_USERS.find(u => u.username !== currentUser);
-    if (!recipientUser) return;
-
+    if (!deletingMessageId || !db) return;
 
     try {
-      // We need to delete the message from both users' collections
-      const batch = writeBatch(db);
-
-      const senderMsgRef = doc(db, "users", currentUserObject.uid, "messages", deletingMessageId);
-      batch.delete(senderMsgRef);
-      
-      // We need to find the corresponding message in the recipient's collection to delete it.
-      // This is a simplification. A real app would store a shared message ID.
-      // For this app, we'll query for a message with the same timestamp from the same sender.
-      const recipientMsgCollection = collection(db, 'users', recipientUser.uid, 'messages');
-      const originalMessage = messages?.find(m => m.id === deletingMessageId);
-      
-      if(originalMessage){
-        const q = query(
-            recipientMsgCollection, 
-            where("senderUid", "==", currentUserObject.uid),
-            where("createdAt", "==", originalMessage.createdAt)
-          );
-
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach((doc) => {
-          batch.delete(doc.ref);
-        });
-      }
-
-
-      await batch.commit();
+      const msgRef = doc(db, "messages", deletingMessageId);
+      await deleteDoc(msgRef);
 
       toast({
         title: "Success",
