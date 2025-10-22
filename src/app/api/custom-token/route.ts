@@ -1,4 +1,6 @@
 
+'use server';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeAdminApp } from '@/firebase/admin-app';
 
@@ -20,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     const customToken = await auth.createCustomToken(uid);
     return NextResponse.json({ token: customToken });
-  } catch (error: any) {
+  } catch (error: any).
     console.error('Error creating custom token:', error);
     return NextResponse.json({ error: 'Failed to create custom token', details: error.message }, { status: 500 });
   }
