@@ -16,7 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Send, Smile, X, Trash2, MessageSquareReply, Paperclip, LogOut, Bell, MoreVertical } from "lucide-react";
 import { format } from "date-fns";
-import { useFirebase, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { useFirebase, useMemoFirebase, setDocumentMergeNonBlocking } from "@/firebase";
 import { useCollection } from "@/firebase/firestore/use-collection";
 
 
@@ -158,8 +158,8 @@ export default function ChatPage() {
     const userDocRef = doc(db, "users", currentUserObject.uid);
   
     const intervalId = setInterval(() => {
-      // Use non-blocking update to avoid UI lag.
-      updateDocumentNonBlocking(userDocRef, {
+      // Use non-blocking set with merge to create or update the document.
+      setDocumentMergeNonBlocking(userDocRef, {
         lastActive: serverTimestamp()
       });
     }, 5000); // Update every 5 seconds

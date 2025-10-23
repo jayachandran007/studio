@@ -30,6 +30,24 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: any, opt
   // Execution continues immediately
 }
 
+/**
+ * Initiates a setDoc operation with merge option (upsert).
+ * Creates the document if it doesn't exist, or updates it if it does.
+ * Does NOT await the write operation internally.
+ */
+export function setDocumentMergeNonBlocking(docRef: DocumentReference, data: any) {
+  setDoc(docRef, data, { merge: true }).catch(error => {
+    errorEmitter.emit(
+      'permission-error',
+      new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'write', // 'set' with merge can be a create or update
+        requestResourceData: data,
+      })
+    );
+  });
+}
+
 
 /**
  * Initiates an addDoc operation for a collection reference.
@@ -64,7 +82,7 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) 
         new FirestorePermissionError({
           path: docRef.path,
           operation: 'update',
-          requestResourceData: data,
+          requestResourceData: data + error,
         })
       )
     });
