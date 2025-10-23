@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getMessaging, MulticastMessage } from 'firebase-admin/messaging';
 import { initializeAdminApp } from '@/firebase/admin-app';
 
@@ -36,14 +36,14 @@ const FUN_FACTS = [
 ];
 
 export async function sendNotification({ message, sender, messageId }: sendNotificationProps): Promise<NotificationResult> {
-    const adminApp = await initializeAdminApp();
-    if (!adminApp) {
+    const adminServices = await initializeAdminApp();
+    if (!adminServices) {
         const errorMsg = "Firebase Admin SDK not initialized. Skipping notification.";
-        console.warn(errorMsg);      
+        console.warn(errorMsg);
         return { success: false, error: errorMsg };
     }
 
-    const { firestore, app } = adminApp;
+    const { firestore, app } = adminServices;
     const messaging = getMessaging(app);
     
     const recipient = ALL_USERS.find(user => user.username !== sender);

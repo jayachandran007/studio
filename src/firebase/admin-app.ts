@@ -11,54 +11,50 @@ import { firebaseConfig } from '@/firebase/config';
 let adminApp: App | undefined;
 
 /**
- * Initializes the Firebase Admin SDK, reusing the existing instance if available.
- * This function is robust for both local development (using service account keys
- * from environment variables) and the deployed App Hosting environment (which uses
- * Application Default Credentials).
- * @returns An object containing the initialized App and Firestore instances, or null if initialization fails.
+ * Initializes and/or returns the Firebase Admin SDK instance.
+ * This is a simplified getter that ensures the app is initialized only once.
+ * @returns The initialized Firebase Admin App instance, or null on failure.
  */
-export async function initializeAdminApp() {
+function getAdminApp(): App | null {
+  if (adminApp) {
+    return adminApp;
+  }
+
   if (getApps().length > 0) {
     const existingApp = getApps().find(app => app.name === 'admin');
     if(existingApp) {
       adminApp = existingApp;
+      return adminApp;
     }
-  }
-
-  if (adminApp) {
-    return {
-      firestore: getFirestore(adminApp),
-      auth: getAuth(adminApp),
-      storage: getStorage(adminApp),
-      app: adminApp
-    };
   }
 
   try {
-    // This will succeed in the App Hosting environment
     adminApp = initializeApp({ projectId: firebaseConfig.projectId }, 'admin');
+    return adminApp;
   } catch (e: any) {
-    if (e.code === 'app/duplicate-app') {
-       adminApp = getApps().find(app => app.name === 'admin');
-       if(!adminApp) {
-          // This case should ideally not be reached if getApps() check is proper
-          console.error("Could not find the 'admin' app despite duplicate error.");
-          return null;
-       }
-    } else {
-      // This will happen in local development if GOOGLE_APPLICATION_CREDENTIALS is not set
-      console.warn(
-        "Default admin initialization failed, likely in local development. ",
-        e.message
-      );
-      return null;
-    }
+    console.warn(
+      "Admin initialization failed. This may be expected in local development.",
+      e.message
+    );
+    return null;
+  }
+}
+
+/**
+ * Provides access to the initialized Firebase Admin services.
+ * This function should be called by server-side code needing admin access.
+ * @returns An object with Firestore, Auth, Storage, and the App instance, or null if initialization fails.
+ */
+export async function initializeAdminApp() {
+  const app = getAdminApp();
+  if (!app) {
+    return null;
   }
 
   return {
-    firestore: getFirestore(adminApp),
-    auth: getAuth(adminApp),
-    storage: getStorage(adminApp),
-    app: adminApp,
+    firestore: getFirestore(app),
+    auth: getAuth(app),
+    storage: getStorage(app),
+    app: app,
   };
 }
