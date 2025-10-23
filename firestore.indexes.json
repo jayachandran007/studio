@@ -31,7 +31,7 @@
     },
     {
       "collectionGroup": "fcmTokens",
-      "queryScope": "COLLECTION_GROUP",
+      "queryScope": "COLLECTION",
       "fields": [
         {
           "fieldPath": "username",
