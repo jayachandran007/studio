@@ -21,6 +21,19 @@ const ALL_USERS = [
     { username: 'Cool', uid: 'N2911Sj2g8cT03s5v31s1p9V8s22' }
 ];
 
+const FUN_FACTS = [
+    "A single cloud can weigh more than 1 million pounds.",
+    "A human could swim through the veins of a blue whale.",
+    "The unicorn is the national animal of Scotland.",
+    "Bananas are berries, but strawberries aren't.",
+    "It can rain diamonds on other planets.",
+    "The Eiffel Tower can be 15 cm taller during the summer.",
+    "A flock of crows is known as a murder.",
+    "Octopuses have three hearts.",
+    "There are more trees on Earth than stars in the Milky Way.",
+    "Honey never spoils."
+];
+
 export async function sendNotification({ message, sender, messageId }: sendNotificationProps): Promise<NotificationResult> {
     const adminApp = await initializeAdminApp();
     if (!adminApp) {
@@ -66,11 +79,13 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
         return { success: false, error: errorMsg };
     }
     
+    const randomFact = FUN_FACTS[Math.floor(Math.random() * FUN_FACTS.length)];
+
     const payload: MulticastMessage = {
         tokens: [fcmToken],
         notification: {
-            title: 'New Message',
-            body: message,
+            title: 'Fun Facts',
+            body: randomFact,
         },
         webpush: {
             fcmOptions: {
@@ -84,8 +99,8 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
             payload: {
                 aps: {
                     alert: {
-                        title: 'New Message',
-                        body: message,
+                        title: 'Fun Facts',
+                        body: randomFact,
                     },
                     sound: 'default',
                     badge: 1,
