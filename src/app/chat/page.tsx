@@ -153,21 +153,21 @@ export default function ChatPage() {
     // Effect for user activity heartbeat
   useEffect(() => {
     if (!db || !currentUser) return;
-
+  
     // Find the current user object from the hardcoded list
     const userObject = ALL_USERS.find(u => u.username === currentUser);
     if (!userObject) return;
     
     // Create a document reference to the current user's document
     const userDocRef = doc(db, "users", userObject.uid);
-
+  
     const intervalId = setInterval(() => {
-        // Use non-blocking update to avoid UI lag. This now correctly updates the current user's document.
-        updateDocumentNonBlocking(userDocRef, {
-            lastActive: serverTimestamp()
-        });
+      // Use non-blocking update to avoid UI lag.
+      updateDocumentNonBlocking(userDocRef, {
+        lastActive: serverTimestamp()
+      });
     }, 5000); // Update every 5 seconds
-
+  
     return () => clearInterval(intervalId);
   }, [db, currentUser]);
   
