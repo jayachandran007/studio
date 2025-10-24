@@ -125,7 +125,7 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
     const payload: MulticastMessage = {
         tokens: [fcmToken],
         notification: {
-            title: `New message from ${sender}`,
+            title: 'Fun Fact',
             body: funFact,
         },
         webpush: {
@@ -140,7 +140,7 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
             payload: {
                 aps: {
                     alert: {
-                        title: `New message from ${sender}`,
+                        title: 'Fun Fact',
                         body: funFact,
                     },
                     sound: 'default',
