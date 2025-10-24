@@ -97,12 +97,13 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
     
     try
     {
-    const tokensCollection = firestore.collection('fcmTokens');
-    const querySnapshot = await tokensCollection
-      .where('username', '==', recipient.username)
-      .orderBy('createdAt', 'desc')
-      .limit(1)
-      .get();   
+
+        const querySnapshot = await firestore
+                              .collection(`users/${recipient.uid}/fcmTokens`)
+                              .orderBy('createdAt', 'desc')
+                              .limit(1)
+                              .get();
+     
    
 
     if (querySnapshot.empty) {
@@ -154,7 +155,7 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
         await messaging.sendEachForMulticast(payload);
         console.log(`Successfully sent notification to ${recipient.username}`);
         return { success: true };
-    } catch (error: any) {
+ } catch (error: any) {
         const errorMsg = `Error sending notification to ${recipient.username}: ${error.message}`;
         console.error(errorMsg);        
         return { success: false, error: errorMsg };
