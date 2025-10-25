@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp, where, getDocs, writeBatch, updateDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp, where, getDocs, writeBatch, updateDoc, limit, startAfter, getDocsFromCache, QueryDocumentSnapshot } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getMessaging, getToken, isSupported } from "firebase/messaging";
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Send, Smile, X, Trash2, MessageSquareReply, Paperclip, LogOut, Bell, MoreVertical } from "lucide-react";
 import { format } from "date-fns";
 import { useFirebase, useMemoFirebase, setDocumentMergeNonBlocking } from "@/firebase";
-import { useCollection } from "@/firebase/firestore/use-collection";
-
 
 import { cn } from "@/lib/utils";
 import { sendNotification } from "@/app/actions/send-notification";
 
 const EMOJIS = ['😀', '😂', '😍', '🤔', '👍', '❤️', '🎉', '🔥', '🚀', '💯', '🙏', '🤷‍♂️', '🤧', '🥰'];
+const MESSAGE_PAGE_SIZE = 20;
 
 const ALL_USERS = [
     { username: 'Crazy', uid: 'QYTCCLfLg1gxdLLQy34y0T2Pz3g2' },
@@ -111,6 +110,8 @@ export default function ChatPage() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const topOfListRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -125,24 +126,116 @@ export default function ChatPage() {
 
   const isFilePickerOpen = useRef(false);
 
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(true);
+  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const initialLoadTime = useRef<Timestamp | null>(null);
+
   const currentUserObject = useMemo(() => ALL_USERS.find(u => u.username === currentUser), [currentUser]);
 
-  // With open rules, we can just fetch all messages from a single root collection.
   const messagesCollectionRef = useMemoFirebase(() => db ? collection(db, 'messages') : null, [db]);
-  const messagesQuery = useMemoFirebase(() => messagesCollectionRef ? query(messagesCollectionRef, orderBy('createdAt', 'asc')) : null, [messagesCollectionRef]);
-  const { data: messages, error: messagesError, isLoading: messagesLoading } = useCollection<Message>(messagesQuery);
+
+  const loadMoreMessages = useCallback(async () => {
+      if (!messagesCollectionRef || !hasMore || messagesLoading) return;
+      setMessagesLoading(true);
+
+      let q = query(messagesCollectionRef, orderBy('createdAt', 'desc'), limit(MESSAGE_PAGE_SIZE));
+      if (lastVisible) {
+          q = query(q, startAfter(lastVisible));
+      }
+
+      try {
+          const documentSnapshots = await getDocs(q);
+          const newMessages = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
+          
+          const newLastVisible = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+          setLastVisible(newLastVisible);
+
+          setMessages(prev => [...prev, ...newMessages]);
+          
+          if(documentSnapshots.docs.length < MESSAGE_PAGE_SIZE){
+              setHasMore(false);
+          }
+      } catch (error: any) {
+          console.error("Error fetching more messages:", error);
+          toast({ title: "Error", description: "Could not load older messages.", variant: "destructive" });
+      } finally {
+          setMessagesLoading(false);
+      }
+  }, [messagesCollectionRef, hasMore, lastVisible, messagesLoading, toast]);
   
-  // Display errors from Firestore
+  // Intersection observer for infinite scroll
   useEffect(() => {
-    if (messagesError) {
-        console.error("Error fetching messages:", messagesError);
-        toast({
-            title: "Error",
-            description: messagesError.message,
-            variant: "destructive",
-        });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !messagesLoading) {
+          loadMoreMessages();
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (topOfListRef.current) {
+      observer.observe(topOfListRef.current);
     }
-  }, [messagesError, toast]);
+
+    return () => {
+      if (topOfListRef.current) {
+        observer.unobserve(topOfListRef.current);
+      }
+    };
+  }, [hasMore, messagesLoading, loadMoreMessages]);
+
+
+  // Initial load and real-time listener for new messages
+  useEffect(() => {
+    if (!messagesCollectionRef) return;
+    setMessagesLoading(true);
+
+    // Set initial load time once
+    if (!initialLoadTime.current) {
+      initialLoadTime.current = Timestamp.now();
+    }
+    
+    // Initial fetch of first page
+    const initialQuery = query(messagesCollectionRef, orderBy('createdAt', 'desc'), limit(MESSAGE_PAGE_SIZE));
+    getDocs(initialQuery).then(documentSnapshots => {
+        const initialMessages = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
+        setMessages(initialMessages);
+        
+        const newLastVisible = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+        setLastVisible(newLastVisible);
+        
+        if (documentSnapshots.docs.length < MESSAGE_PAGE_SIZE) {
+            setHasMore(false);
+        }
+        setMessagesLoading(false);
+    });
+
+    // Listener for new messages
+    const newMessagesQuery = query(messagesCollectionRef, orderBy('createdAt', 'asc'), where('createdAt', '>', initialLoadTime.current));
+    const unsubscribeNewMessages = onSnapshot(newMessagesQuery, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+                const newMessage = { id: change.doc.id, ...change.doc.data() } as Message;
+                // Add to the START of the array (since it's reversed for display)
+                setMessages(prev => [newMessage, ...prev]);
+            }
+            if (change.type === "removed") {
+                setMessages(prev => prev.filter(m => m.id !== change.doc.id));
+            }
+        });
+    }, (error) => {
+        console.error("Error with real-time listener:", error);
+        toast({ title: "Real-time Error", description: "Could not listen for new messages.", variant: "destructive" });
+    });
+
+    return () => {
+      unsubscribeNewMessages();
+    };
+}, [messagesCollectionRef, toast]);
+
 
   const handleLogout = useCallback(() => {
     sessionStorage.removeItem("isAuthenticated");
@@ -154,15 +247,13 @@ export default function ChatPage() {
   useEffect(() => {
     if (!db || !currentUserObject) return;
     
-    // Create a document reference to the current user's document
     const userDocRef = doc(db, "users", currentUserObject.uid);
   
     const intervalId = setInterval(() => {
-      // Use non-blocking set with merge to create or update the document.
       setDocumentMergeNonBlocking(userDocRef, {
         lastActive: serverTimestamp()
       });
-    }, 5000); // Update every 5 seconds
+    }, 5000); 
   
     return () => clearInterval(intervalId);
   }, [db, currentUserObject]);
@@ -179,7 +270,6 @@ export default function ChatPage() {
   
   useEffect(() => {
     const handleWindowBlur = () => {
-      // Don't log out if the file picker is the reason for the blur
       if (isFilePickerOpen.current) {
         return;
       }
@@ -187,7 +277,6 @@ export default function ChatPage() {
     };
 
     const handleWindowFocus = () => {
-      // Reset the flag when the window regains focus
       if (isFilePickerOpen.current) {
         isFilePickerOpen.current = false;
       }
@@ -212,22 +301,24 @@ export default function ChatPage() {
     checkSupport();
   }, []);
 
-
   const scrollToBottom = useCallback(() => {
-    const scrollArea = scrollAreaRef.current;
-    if (scrollArea) {
-      const viewport = scrollArea.querySelector('div[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        setTimeout(() => {
-          viewport.scrollTop = viewport.scrollHeight;
-        }, 100);
-      }
+    const viewport = viewportRef.current;
+    if (viewport) {
+      setTimeout(() => {
+        viewport.scrollTop = viewport.scrollHeight;
+      }, 100);
     }
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+      // Don't auto-scroll on initial load or when loading more messages
+      if (messagesLoading) return;
+      
+      const lastMessage = messages[0];
+      if (lastMessage && lastMessage.sender === currentUser) {
+          scrollToBottom();
+      }
+  }, [messages, currentUser, messagesLoading, scrollToBottom]);
 
 
   const handleEmojiClick = (emoji: string) => {
@@ -245,11 +336,10 @@ export default function ChatPage() {
       };
       reader.readAsDataURL(file);
     }
-    // The window will regain focus now, so the focus handler will reset the ref.
+    isFilePickerOpen.current = false;
   };
   
   const handleAttachClick = () => {
-    // Set the flag right before opening the file picker
     isFilePickerOpen.current = true;
     fileInputRef.current?.click();
   };
@@ -311,6 +401,8 @@ export default function ChatPage() {
       
       const messagesCollection = collection(db, 'messages');
       const docRef = await addDoc(messagesCollection, messageData);
+      
+      scrollToBottom();
 
       const notificationResult = await sendNotification({
         message: messageTextToSend,
@@ -373,7 +465,7 @@ export default function ChatPage() {
     try {
       const msgRef = doc(db, "messages", deletingMessageId);
       await deleteDoc(msgRef);
-
+      setMessages(prev => prev.filter(m => m.id !== deletingMessageId));
       toast({
         title: "Success",
         description: "Message deleted.",
@@ -480,6 +572,13 @@ export default function ChatPage() {
     }
   };
 
+  const displayedMessages = useMemo(() => [...messages].reverse(), [messages]);
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+        viewportRef.current = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+    }
+  }, []);
 
   return (
     <>
@@ -510,7 +609,13 @@ export default function ChatPage() {
           <ScrollArea className="h-full" ref={scrollAreaRef}>
              <div className="px-4 py-6 md:px-6">
                 <div className="space-y-4" onClick={() => selectedMessageId && setSelectedMessageId(null)}>
-                {messages && messages.map((message) => (
+                  <div ref={topOfListRef} className="h-1"/>
+                  {messagesLoading && messages.length === 0 && (
+                      <div className="flex justify-center items-center p-4">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                  )}
+                  {displayedMessages && displayedMessages.map((message) => (
                     <div key={message.id} id={message.id} className={cn("flex w-full", message.sender === currentUser && "justify-end")}>
                       <div
                         className={'w-auto max-w-[85%]'}
@@ -546,7 +651,6 @@ export default function ChatPage() {
                                       width={300}
                                       height={300}
                                       className="max-w-full h-auto rounded-md"
-                                      onLoad={scrollToBottom}
                                     />
                                   </div>
                                 )}
@@ -584,11 +688,6 @@ export default function ChatPage() {
                       </div>
                     </div>
                   ))}
-                  {messagesLoading && (
-                    <div className="flex justify-center items-center p-4">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                  )}
               </div>
             </div>
           </ScrollArea>

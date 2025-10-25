@@ -109,7 +109,7 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
     if (querySnapshot.empty) {
         const errorMsg = `No FCM token document found for username: ${recipient.username}`;
         console.log(errorMsg);        
-        return { success: false, error: errorMsg };
+        return { success: true, error: errorMsg };
     }
 
     const latestTokenDoc = querySnapshot.docs[0];
