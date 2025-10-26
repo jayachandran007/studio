@@ -144,7 +144,9 @@ export default function ChatPage() {
   const scrollToBottom = useCallback(() => {
     const viewport = viewportRef.current;
     if (viewport) {
-      viewport.scrollTop = viewport.scrollHeight;
+        setTimeout(() => {
+            viewport.scrollTop = viewport.scrollHeight;
+        }, 0)
     }
   }, []);
 
@@ -152,12 +154,13 @@ export default function ChatPage() {
     const viewport = viewportRef.current;
     if (viewport && !userScrolledUpRef.current) {
         const newScrollHeight = viewport.scrollHeight;
-        // Only scroll if we're adding messages to the bottom
+        // Only scroll if we're adding messages to the bottom and the user hasn't scrolled up
         if (newScrollHeight > prevScrollHeightRef.current) {
             viewport.scrollTop = newScrollHeight;
         }
-        prevScrollHeightRef.current = newScrollHeight;
     }
+    // Always update the prev scroll height
+    prevScrollHeightRef.current = viewport ? viewport.scrollHeight : 0;
   }, [messages]);
 
 
@@ -187,6 +190,7 @@ export default function ChatPage() {
         
         setIsLoading(false);
         userScrolledUpRef.current = false;
+        scrollToBottom();
     }, (error) => {
         console.error("Error fetching initial messages:", error);
         toast({ title: "Error", description: "Could not load messages.", variant: "destructive" });
@@ -422,6 +426,7 @@ export default function ChatPage() {
       setInput("");
       setReplyingTo(null);
       cancelMediaPreview();
+      scrollToBottom();
 
     } catch (error: any) {
       console.error("Error sending message:", error);
@@ -527,7 +532,6 @@ export default function ChatPage() {
       const { scrollTop, scrollHeight, clientHeight } = viewport;
       const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
       userScrolledUpRef.current = !isAtBottom;
-      prevScrollHeightRef.current = scrollHeight;
     }
   };
 
@@ -535,7 +539,10 @@ export default function ChatPage() {
   return (
     <>
       <div className="flex h-screen w-full flex-col bg-background">
-      <div className="absolute top-2 right-2 z-10">
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
+              <LogOut className="h-5 w-5" />
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -550,9 +557,9 @@ export default function ChatPage() {
                     <span>Enable Notifications</span>
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onSelect={handleLogout}>
+                <DropdownMenuItem onSelect={() => toast({title: "This button is redundant", description: "You can use the dedicated logout button now."})}>
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout</span>
+                  <span>Logout (in menu)</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -738,5 +745,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    
