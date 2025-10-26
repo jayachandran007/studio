@@ -24,6 +24,11 @@
           "type": "string",
           "format": "date-time",
           "description": "The timestamp of the user's last activity."
+        },
+        "lastNotificationSentAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the last push notification was sent to the user."
         }
       },
       "required": [
