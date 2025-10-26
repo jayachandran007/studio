@@ -47,7 +47,15 @@ const FUN_FACTS = [
     "A single strand of spaghetti is called a 'spaghetto'.",
     "The plural of 'octopus' is 'octopuses', not 'octopi'.",
     "Honey never spoils.",
-    "Bananas are berries, but strawberries aren't."
+    "Bananas are berries, but strawberries aren't.",
+    "A crocodile cannot stick its tongue out.",
+    "The shortest war in history was between Britain and Zanzibar on August 27, 1896. Zanzibar surrendered after 38 minutes.",
+    "A shrimp's heart is in its head.",
+    "It is impossible for most people to lick their own elbow.",
+    "Slugs have four noses.",
+    "An ostrich's eye is bigger than its brain.",
+    "A sneeze travels at about 100 miles per hour.",
+    "Octopuses have three hearts."
 ];
 
 const NOTIFICATION_COOLDOWN_MINUTES = 3;
