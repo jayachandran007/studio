@@ -195,13 +195,12 @@ export default function ChatPage() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let shouldScroll = false;
-      if (messages.length === 0) { // Only auto-scroll on initial load
+      const viewport = viewportRef.current;
+      
+      if (!messages.length) { // Only auto-scroll on initial load
           shouldScroll = true;
-      } else { // Or if user is near the bottom for new messages
-          const viewport = viewportRef.current;
-          if (viewport) {
-              shouldScroll = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 200;
-          }
+      } else if (viewport) { // Or if user is near the bottom for new messages
+          shouldScroll = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 200;
       }
 
       const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
@@ -303,7 +302,7 @@ export default function ChatPage() {
     if (viewport) {
       setTimeout(() => {
         viewport.scrollTop = viewport.scrollHeight;
-      }, 100);
+      }, 150); // Increased timeout for better mobile browser compatibility
     }
   }, []);
 
@@ -388,7 +387,8 @@ export default function ChatPage() {
       const messagesCollection = collection(db, 'messages');
       const docRef = await addDoc(messagesCollection, messageData);
       
-      scrollToBottom();
+      // We don't call scrollToBottom here directly anymore,
+      // the onSnapshot listener will handle it.
 
       const notificationResult = await sendNotification({
         message: messageTextToSend,
