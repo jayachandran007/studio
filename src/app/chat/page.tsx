@@ -218,7 +218,6 @@ export default function ChatPage() {
       }
       
       setMessagesLoading(false);
-
       if (shouldScroll) {
           scrollToBottom();
       }
@@ -302,7 +301,7 @@ export default function ChatPage() {
     if (viewport) {
       setTimeout(() => {
         viewport.scrollTop = viewport.scrollHeight;
-      }, 150); // Increased timeout for better mobile browser compatibility
+      }, 500); // Increased timeout for better mobile browser compatibility
     }
   }, []);
 
