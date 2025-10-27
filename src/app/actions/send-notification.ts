@@ -176,17 +176,22 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
         const funFact = getRandomFunFact();
 
         const payload: MulticastMessage = {
-            tokens: [fcmToken],           
+            tokens: [fcmToken],
+            webpush: {
+                notification: {
+                    title: 'Fun Fact',
+                    body: funFact,
+                },
+                fcmOptions: {
+                    link: `/chat#${messageId}`,
+                },
+            },           
             apns: {
                 headers: {
                     'apns-priority': '10', 
                 },
                 payload: {
-                    aps: {
-                        alert: {
-                            title: 'Fun Fact',
-                            body: funFact,
-                        },
+                    aps: {                       
                         sound: 'default',
                         badge: 1,
                     },
