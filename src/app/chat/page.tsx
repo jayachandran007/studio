@@ -248,7 +248,7 @@ export default function ChatPage() {
   const handleLogout = useCallback(() => {
     sessionStorage.removeItem("isAuthenticated");
     sessionStorage.removeItem("currentUser");
-    router.push("/");
+    router.replace("/");
   }, [router]);
 
     // Effect for user activity heartbeat
@@ -270,7 +270,7 @@ export default function ChatPage() {
     const isAuthenticated = sessionStorage.getItem("isAuthenticated");
     const user = sessionStorage.getItem("currentUser");
     if (!isAuthenticated || !user) {
-      router.push("/");
+      router.replace("/");
     } else {
       setCurrentUser(user);
     }
@@ -513,6 +513,9 @@ export default function ChatPage() {
     <>
       <div className="flex h-screen w-full flex-col bg-background">
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
+              <LogOut className="h-5 w-5" />
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -701,5 +704,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    
