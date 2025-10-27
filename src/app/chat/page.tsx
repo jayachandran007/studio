@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/componentsui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Send, Smile, X, Trash2, MessageSquareReply, Paperclip, LogOut, Bell, MoreVertical } from "lucide-react";
 import { format } from "date-fns";
@@ -139,28 +139,22 @@ export default function ChatPage() {
   const messagesCollectionRef = useMemoFirebase(() => db ? collection(db, 'messages') : null, [db]);
   const userScrolledUpRef = useRef(false);
   const prevScrollHeightRef = useRef(0);
+  const atBottomRef = useRef(true);
 
-
-  const scrollToBottom = useCallback(() => {
-    const viewport = viewportRef.current;
-    if (viewport) {
-        setTimeout(() => {
-            viewport.scrollTop = viewport.scrollHeight;
-        }, 0)
-    }
-  }, []);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
-    if (viewport && !userScrolledUpRef.current) {
+    if (viewport) {
+      if (atBottomRef.current) {
+        viewport.scrollTop = viewport.scrollHeight;
+      } else {
         const newScrollHeight = viewport.scrollHeight;
-        // Only scroll if we're adding messages to the bottom and the user hasn't scrolled up
         if (newScrollHeight > prevScrollHeightRef.current) {
-            viewport.scrollTop = newScrollHeight;
+          viewport.scrollTop += newScrollHeight - prevScrollHeightRef.current;
         }
+      }
+      prevScrollHeightRef.current = viewport.scrollHeight;
     }
-    // Always update the prev scroll height
-    prevScrollHeightRef.current = viewport ? viewport.scrollHeight : 0;
   }, [messages]);
 
 
@@ -189,8 +183,6 @@ export default function ChatPage() {
         setHasMore(querySnapshot.docs.length >= MESSAGE_PAGE_SIZE);
         
         setIsLoading(false);
-        userScrolledUpRef.current = false;
-        scrollToBottom();
     }, (error) => {
         console.error("Error fetching initial messages:", error);
         toast({ title: "Error", description: "Could not load messages.", variant: "destructive" });
@@ -206,8 +198,7 @@ export default function ChatPage() {
       if (!messagesCollectionRef || !hasMore || isLoadingMore || !lastVisible) return;
       
       setIsLoadingMore(true);
-      userScrolledUpRef.current = true;
-
+      
       const q = query(messagesCollectionRef, orderBy('createdAt', 'desc'), startAfter(lastVisible), limit(MESSAGE_PAGE_SIZE));
 
       try {
@@ -217,18 +208,8 @@ export default function ChatPage() {
           if (documentSnapshots.docs.length > 0) {
             const newLastVisible = documentSnapshots.docs[documentSnapshots.docs.length - 1];
             
-            const viewport = viewportRef.current;
-            const previousScrollHeight = viewport?.scrollHeight || 0;
-            
             setMessages(prev => [...newMessages, ...prev]);
             setLastVisible(newLastVisible);
-
-            // Maintain scroll position after loading older messages
-            if (viewport) {
-                setTimeout(() => {
-                    viewport.scrollTop = viewport.scrollHeight - previousScrollHeight;
-                }, 0);
-            }
           }
           
           if(documentSnapshots.docs.length < MESSAGE_PAGE_SIZE){
@@ -375,7 +356,7 @@ export default function ChatPage() {
     if (!currentUser || !db || !storage || !currentUserObject) return;
 
     setIsSending(true);
-    userScrolledUpRef.current = false;
+    atBottomRef.current = true;
 
     const recipientUser = ALL_USERS.find(u => u.username !== currentUser);
     if (!recipientUser) {
@@ -426,7 +407,6 @@ export default function ChatPage() {
       setInput("");
       setReplyingTo(null);
       cancelMediaPreview();
-      scrollToBottom();
 
     } catch (error: any) {
       console.error("Error sending message:", error);
@@ -530,8 +510,8 @@ export default function ChatPage() {
     const viewport = viewportRef.current;
     if (viewport) {
       const { scrollTop, scrollHeight, clientHeight } = viewport;
-      const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
-      userScrolledUpRef.current = !isAtBottom;
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 1;
+      atBottomRef.current = isAtBottom;
     }
   };
 
@@ -540,9 +520,6 @@ export default function ChatPage() {
     <>
       <div className="flex h-screen w-full flex-col bg-background">
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
-              <LogOut className="h-5 w-5" />
-            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -689,7 +666,7 @@ export default function ChatPage() {
                     <span className="sr-only">Add Emoji</span>
                 </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" side="top" align="end">
+                <PopoverContent className="w-auto p-2" side="top" align="start">
                 <div className="grid grid-cols-6 gap-1">
                     {EMOJIS.map((emoji) => (
                     <Button key={emoji} variant="ghost" size="icon" className="text-xl" onClick={() => handleEmojiClick(emoji)}>
@@ -699,6 +676,9 @@ export default function ChatPage() {
                 </div>
                 </PopoverContent>
             </Popover>
+            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout" className="h-10 w-10 shrink-0">
+              <LogOut className="h-4 w-4" />
+            </Button>
             <Textarea
               ref={inputRef}
               placeholder="Type your message..."
@@ -745,3 +725,4 @@ export default function ChatPage() {
     </>
   );
 }
+
