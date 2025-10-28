@@ -330,6 +330,16 @@
               "description": "The unique identifier for the letter entry."
             }
           ],
+          "operations": {
+            "update": {
+              "rule": "resource.data.authorUsername == request.auth.token.name",
+              "description": "A user can only update their own letter entry."
+            },
+            "delete": {
+              "rule": "resource.data.authorUsername == request.auth.token.name",
+              "description": "A user can only delete their own letter entry."
+            }
+          },
           "queries": [
             {
               "description": "Fetches all letter entries, ordered by creation date.",
@@ -349,5 +359,3 @@
     "reasoning": "The Firestore structure is simplified for a two-user prototype where strict security is not a requirement. All data in the 'users', 'messages', 'fcmTokens', 'bucketList', and 'letter' collections are public to allow for easy reading and writing without complex authentication checks. This model is suitable for rapid prototyping but should be secured before moving to a production environment with more users."
   }
 }
-
-    
