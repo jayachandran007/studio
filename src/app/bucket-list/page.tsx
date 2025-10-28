@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { collection, serverTimestamp, query, orderBy, onSnapshot, Timestamp, doc, deleteDoc } from "firebase/firestore";
 import { useFirebase, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Plus, MoreVertical, Trash2, ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { Loader2, ArrowLeft, Plus, MoreVertical, Trash2, ArrowUp, ArrowDown, Minus, LogOut } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -54,6 +54,12 @@ export default function BucketListPage() {
     } else {
       setCurrentUser(user);
     }
+  }, [router]);
+  
+  const handleLogout = useCallback(() => {
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("currentUser");
+    router.replace("/");
   }, [router]);
 
   const bucketListCollectionRef = useMemoFirebase(() => db ? collection(db, 'bucketList') : null, [db]);
@@ -224,6 +230,9 @@ export default function BucketListPage() {
             {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             <span className="sr-only">Add Item</span>
           </Button>
+           <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
+              <LogOut className="h-5 w-5" />
+            </Button>
         </div>
       </footer>
     </div>

@@ -10,7 +10,7 @@ import { useFirebase, useMemoFirebase } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Star } from "lucide-react";
+import { Loader2, ArrowLeft, Star, LogOut } from "lucide-react";
 import { format } from "date-fns";
 import type { Message } from "../chat/page";
 import { cn } from "@/lib/utils";
@@ -76,6 +76,12 @@ export default function FavoritesPage() {
     } else {
       setCurrentUser(user);
     }
+  }, [router]);
+
+    const handleLogout = useCallback(() => {
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("currentUser");
+    router.replace("/");
   }, [router]);
 
   const fetchFavorites = useCallback(async () => {
@@ -204,6 +210,13 @@ export default function FavoritesPage() {
           </div>
         </ScrollArea>
       </main>
+       <footer className="shrink-0 border-t bg-card p-2 md:p-4">
+        <div className="flex items-center justify-end">
+            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
+              <LogOut className="h-5 w-5" />
+            </Button>
+        </div>
+      </footer>
     </div>
   );
 }
