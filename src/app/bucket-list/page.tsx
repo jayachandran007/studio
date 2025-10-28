@@ -1,23 +1,42 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
-import { useFirebase, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
+import { collection, serverTimestamp, query, orderBy, onSnapshot, Timestamp, doc, deleteDoc } from "firebase/firestore";
+import { useFirebase, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Plus } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, ArrowLeft, Plus, MoreVertical, Trash2, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+
+type Priority = 'low' | 'medium' | 'high';
 
 interface BucketListItem {
   id: string;
   text: string;
   authorUsername: string;
   createdAt: Timestamp;
+  isDone: boolean;
+  priority: Priority;
 }
+
+const priorityIcons: Record<Priority, React.ReactNode> = {
+  high: <ArrowUp className="h-4 w-4 text-red-500" />,
+  medium: <Minus className="h-4 w-4 text-yellow-500" />,
+  low: <ArrowDown className="h-4 w-4 text-green-500" />,
+};
+
+const priorityOrder: Record<Priority, number> = {
+  high: 3,
+  medium: 2,
+  low: 1,
+};
 
 export default function BucketListPage() {
   const router = useRouter();
@@ -43,11 +62,29 @@ export default function BucketListPage() {
     if (!bucketListCollectionRef) return;
 
     setIsLoading(true);
-    const q = query(bucketListCollectionRef, orderBy("createdAt", "desc"));
+    const q = query(
+      bucketListCollectionRef,
+      orderBy("isDone", "asc"),
+      orderBy("createdAt", "desc")
+    );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const bucketListItems = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BucketListItem));
-      setItems(bucketListItems);
+      
+      // Custom sort on the client
+      const sortedItems = bucketListItems.sort((a, b) => {
+        if (a.isDone !== b.isDone) {
+          return a.isDone ? 1 : -1;
+        }
+        const priorityA = priorityOrder[a.priority] || 2;
+        const priorityB = priorityOrder[b.priority] || 2;
+        if (priorityA !== priorityB) {
+          return priorityB - priorityA;
+        }
+        return b.createdAt.toMillis() - a.createdAt.toMillis();
+      });
+
+      setItems(sortedItems);
       setIsLoading(false);
     }, (error) => {
       console.error("Error fetching bucket list items:", error);
@@ -66,6 +103,8 @@ export default function BucketListPage() {
         text: newItemText.trim(),
         authorUsername: currentUser,
         createdAt: serverTimestamp(),
+        isDone: false,
+        priority: 'medium',
       });
       setNewItemText("");
     } catch (error) {
@@ -81,6 +120,25 @@ export default function BucketListPage() {
       handleAddItem();
     }
   };
+
+  const handleToggleDone = (item: BucketListItem) => {
+    if (!db) return;
+    const itemRef = doc(db, 'bucketList', item.id);
+    updateDocumentNonBlocking(itemRef, { isDone: !item.isDone });
+  };
+
+  const handleDeleteItem = (itemId: string) => {
+    if (!db) return;
+    const itemRef = doc(db, 'bucketList', itemId);
+    deleteDocumentNonBlocking(itemRef);
+  };
+  
+  const handleSetPriority = (item: BucketListItem, priority: Priority) => {
+    if (!db) return;
+    const itemRef = doc(db, 'bucketList', item.id);
+    updateDocumentNonBlocking(itemRef, { priority });
+  };
+
 
   return (
     <div className="flex h-screen w-full flex-col bg-background">
@@ -105,12 +163,42 @@ export default function BucketListPage() {
             ) : (
               <div className="space-y-4">
                 {items.map((item) => (
-                  <Card key={item.id}>
-                    <CardContent className="p-4">
-                      <p className="font-medium">{item.text}</p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Added by {item.authorUsername} on {item.createdAt && format(item.createdAt.toDate(), "MMM d, yyyy")}
-                      </p>
+                  <Card key={item.id} className={cn("transition-colors", item.isDone && "bg-muted/50")}>
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <Checkbox
+                        checked={item.isDone}
+                        onCheckedChange={() => handleToggleDone(item)}
+                        aria-label="Mark as done"
+                      />
+                      <div className="flex-1">
+                        <p className={cn("font-medium", item.isDone && "line-through text-muted-foreground")}>{item.text}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Added by {item.authorUsername} on {item.createdAt && format(item.createdAt.toDate(), "MMM d, yyyy")}
+                        </p>
+                      </div>
+                      {priorityIcons[item.priority]}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">More options</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => handleSetPriority(item, 'high')}>
+                            <ArrowUp className="mr-2 h-4 w-4" /> Priority High
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleSetPriority(item, 'medium')}>
+                            <Minus className="mr-2 h-4 w-4" /> Priority Medium
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleSetPriority(item, 'low')}>
+                            <ArrowDown className="mr-2 h-4 w-4" /> Priority Low
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleDeleteItem(item.id)} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </CardContent>
                   </Card>
                 ))}

@@ -145,6 +145,17 @@
           "type": "string",
           "format": "date-time",
           "description": "The timestamp when the item was created."
+        },
+        "isDone": {
+          "type": "boolean",
+          "description": "Indicates if the bucket list item is completed.",
+          "default": false
+        },
+        "priority": {
+          "type": "string",
+          "description": "The priority of the bucket list item.",
+          "enum": ["low", "medium", "high"],
+          "default": "medium"
         }
       },
       "required": [
@@ -251,9 +262,19 @@
           ],
           "queries": [
              {
-              "description": "Fetches all bucket list items, ordered by creation date.",
+              "description": "Fetches all bucket list items, ordered by completion status, priority, and creation date.",
               "collection": "bucketList",
               "clauses": [
+                {
+                  "field": "isDone",
+                  "operator": "asc",
+                  "value": null
+                },
+                {
+                  "field": "priority",
+                  "operator": "desc",
+                  "value": null
+                },
                 {
                   "field": "createdAt",
                   "operator": "desc",
