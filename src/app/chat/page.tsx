@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, X, Trash2, MessageSquareReply, Paperclip, LogOut, Bell, MoreVertical, Star, Heart, ListPlus, BookText } from "lucide-react";
+import { Loader2, Send, X, Trash2, MessageSquareReply, Paperclip, LogOut, Bell, MoreVertical, Star, Heart, ListPlus, BookText, Mic, StopCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useFirebase, useMemoFirebase, setDocumentMergeNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { cn } from "@/lib/utils";
@@ -140,6 +140,10 @@ export default function ChatPage() {
   const messagesCollectionRef = useMemoFirebase(() => db ? collection(db, 'messages') : null, [db]);
   const prevScrollHeightRef = useRef(0);
   const atBottomRef = useRef(true);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
 
   useLayoutEffect(() => {
@@ -520,6 +524,45 @@ export default function ChatPage() {
     }
   };
 
+  const startRecording = async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorderRef.current = new MediaRecorder(stream);
+        audioChunksRef.current = [];
+
+        mediaRecorderRef.current.ondataavailable = event => {
+            audioChunksRef.current.push(event.data);
+        };
+
+        mediaRecorderRef.current.onstop = () => {
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audioFile = new File([audioBlob], `voice-note-${Date.now()}.webm`, { type: 'audio/webm' });
+            setMediaFile(audioFile);
+            setMediaPreview(audioUrl);
+            setMediaType('audio');
+        };
+
+        mediaRecorderRef.current.start();
+        setIsRecording(true);
+    } catch (err) {
+        console.error("Error accessing microphone:", err);
+        toast({
+            title: "Microphone Error",
+            description: "Could not access microphone. Please check permissions.",
+            variant: "destructive",
+        });
+    }
+  };
+
+  const stopRecording = () => {
+      if (mediaRecorderRef.current && isRecording) {
+          mediaRecorderRef.current.stop();
+          setIsRecording(false);
+          // Stop all tracks on the stream to release the microphone
+          mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      }
+  };
 
   return (
     <>
@@ -655,7 +698,7 @@ export default function ChatPage() {
               </div>
             )}
              {mediaPreview && (
-              <div className="relative rounded-t-lg bg-muted/50 p-2">
+              <div className="relative rounded-t-lg bg-muted/50 p-2 flex items-center gap-2">
                 {mediaType === 'image' && <Image src={mediaPreview} alt="Image preview" width={80} height={80} className="h-20 w-20 rounded-md object-cover" />}
                 {mediaType === 'video' && <video src={mediaPreview} className="h-20 w-auto rounded-md" />}
                 {mediaType === 'audio' && <audio src={mediaPreview} controls className="h-10 w-full" />}
@@ -677,7 +720,7 @@ export default function ChatPage() {
                 size="icon"
                 className="h-10 w-10 shrink-0"
                 onClick={handleAttachClick}
-                disabled={isSending}
+                disabled={isSending || isRecording}
               >
                 <Paperclip className="h-4 w-4" />
                 <span className="sr-only">Attach File</span>
@@ -687,20 +730,42 @@ export default function ChatPage() {
             </Button>
             <Textarea
               ref={inputRef}
-              placeholder="Type your message..."
+              placeholder={isRecording ? "Recording..." : "Type your message..."}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
-              disabled={isSending}
+              disabled={isSending || isRecording || !!mediaFile}
               className={cn("max-h-32", (replyingTo || mediaPreview) ? "rounded-t-none" : "")}
               rows={1}
             />
+             {isRecording ? (
+                <Button
+                    size="icon"
+                    variant="destructive"
+                    className="h-10 w-10 shrink-0"
+                    onClick={stopRecording}
+                >
+                    <StopCircle className="h-4 w-4" />
+                    <span className="sr-only">Stop Recording</span>
+                </Button>
+            ) : (
+                <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-10 w-10 shrink-0"
+                    onClick={startRecording}
+                    disabled={isSending || !!mediaFile}
+                >
+                    <Mic className="h-4 w-4" />
+                    <span className="sr-only">Start Recording</span>
+                </Button>
+            )}
             <Button
                 type="submit"
                 size="icon"
                 className="h-10 w-10 shrink-0"
                 onClick={handleSend}
-                disabled={isSending || (!input.trim() && !mediaFile)}
+                disabled={isSending || (!input.trim() && !mediaFile) || isRecording}
             >
                 {isSending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
                 <span className="sr-only">Send</span>
