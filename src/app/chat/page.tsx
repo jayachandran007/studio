@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp, limit, startAfter, getDocs } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp, limit, startAfter, getDocs, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getMessaging, getToken, isSupported } from "firebase/messaging";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, X, Trash2, MessageSquareReply, Paperclip, LogOut, Bell, MoreVertical } from "lucide-react";
+import { Loader2, Send, X, Trash2, MessageSquareReply, Paperclip, LogOut, Bell, MoreVertical, Star } from "lucide-react";
 import { format } from "date-fns";
-import { useFirebase, useMemoFirebase, setDocumentMergeNonBlocking, addDocumentNonBlocking } from "@/firebase";
+import { useFirebase, useMemoFirebase, setDocumentMergeNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { cn } from "@/lib/utils";
 import { sendNotification } from "@/app/actions/send-notification";
 
@@ -43,6 +43,7 @@ interface Message {
   videoUrl?: string;
   audioUrl?: string;
   fileName?: string;
+  isFavorited?: boolean;
 }
 
 // Simple Caesar cipher for encoding
@@ -367,6 +368,7 @@ export default function ChatPage() {
         recipientUid: recipientUser.uid,
         createdAt: serverTimestamp(),
         isEncoded: true,
+        isFavorited: false,
       };
 
       if (mediaFile && mediaType) {
@@ -439,6 +441,15 @@ export default function ChatPage() {
       setDeletingMessageId(null);
       setSelectedMessageId(null);
     }
+  };
+
+  const handleToggleFavorite = (message: Message) => {
+    if (!db) return;
+    const msgRef = doc(db, "messages", message.id);
+    updateDocumentNonBlocking(msgRef, {
+      isFavorited: !message.isFavorited
+    });
+    setSelectedMessageId(null);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -589,9 +600,10 @@ export default function ChatPage() {
                               )}
                               {getMessageText(message).trim() && <LinkifiedText text={getMessageText(message)} />}
                               {message.createdAt && (
-                                <p className={cn("text-xs mt-1", message.sender === currentUser ? "text-primary-foreground/70" : "text-muted-foreground/70")}>
-                                  {format(message.createdAt.toDate(), "h:mm a")}
-                                </p>
+                                <div className={cn("flex items-center text-xs mt-1", message.sender === currentUser ? "text-primary-foreground/70" : "text-muted-foreground/70")}>
+                                  {message.isFavorited && <Star className="h-3 w-3 mr-1 fill-current" />}
+                                  <span>{format(message.createdAt.toDate(), "h:mm a")}</span>
+                                </div>
                               )}
                             </div>
                           </PopoverTrigger>
@@ -599,6 +611,9 @@ export default function ChatPage() {
                             <div className="flex items-center gap-1">
                               <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => handleReplyClick(message)}>
                                 <MessageSquareReply className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => handleToggleFavorite(message)}>
+                                <Star className={cn("h-4 w-4", message.isFavorited && "fill-current text-yellow-500")} />
                               </Button>
                               {message.sender === currentUser && (
                                 <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:text-destructive" onClick={() => { setDeletingMessageId(message.id); setSelectedMessageId(null); }}>
@@ -704,5 +719,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    

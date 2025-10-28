@@ -79,6 +79,10 @@
         "scrambleMethod": {
           "type": "string",
           "description": "The scrambling method used for this message (e.g., letter substitution, reverse)."
+        },
+        "isFavorited": {
+          "type": "boolean",
+          "description": "Indicates if the message has been marked as a favorite by a user."
         }
       },
       "required": [
