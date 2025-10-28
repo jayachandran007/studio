@@ -81,6 +81,8 @@ export default function DisguisedLoginPage() {
     // Randomly select content and theme on the client side to avoid hydration mismatch
     setContent(contentSets[Math.floor(Math.random() * contentSets.length)]);
     setTheme(themes[Math.floor(Math.random() * themes.length)]);
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("currentUser");
   }, []);
 
   const handleLogin = useCallback((user: {username: string, uid: string}) => {
