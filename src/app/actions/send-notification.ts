@@ -206,7 +206,7 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
 
                 const from = process.env.VONAGE_PHONE_NUMBER;
                 const to = recipient.phoneNumber;
-                const text = `A new fun fact is available in the news app: ${funFact}`;
+                const text = funFact;
 
                 await vonage.sms.send({ to, from, text });
                 console.log(`Successfully sent SMS to ${recipient.username} at ${to}`);
