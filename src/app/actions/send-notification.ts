@@ -2,14 +2,12 @@
 'use server';
 
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { getMessaging, Message, MulticastMessage } from 'firebase-admin/messaging';
+import { getMessaging, Message } from 'firebase-admin/messaging';
 import { initializeApp, getApps, App } from 'firebase-admin/app';
 import { firebaseConfig } from '@/firebase/config';
 import { Vonage } from '@vonage/server-sdk';
 import { vonageConfig } from '@/config/vonage';
 
-// This function should be defined within the file or imported from a non-'use server' module.
-// For simplicity, we define it here to avoid cross-module issues with 'use server'.
 function getAdminApp(): App | null {
     if (getApps().some(app => app.name === 'admin')) {
         return getApps().find(app => app.name === 'admin')!;
@@ -94,13 +92,93 @@ const FUN_FACTS = [
     "The average person walks the equivalent of three times around the world in a lifetime.",
     "Sea otters hold hands when they sleep so they don't float away from each other.",
     "The tongue is the only muscle in the human body that is attached at only one end.",
-    "A cockroach can live for a week without its head."
+    "A cockroach can live for a week without its head.",
+    "The Great Wall of China is not visible from the moon with the naked eye.",
+    "A bolt of lightning is five times hotter than the sun.",
+    "The state of Florida is larger than England.",
+    "An apple, potato, and onion all taste the same if you eat them with your nose plugged.",
+    "The oldest 'your mom' joke was discovered on a 3,500-year-old Babylonian tablet.",
+    "There are more public libraries in the US than McDonald's restaurants.",
+    "A cat's purr may be a form of self-healing, as it can be a sign of nervousness as well as contentment.",
+    "The sound of a whip cracking is actually a small sonic boom.",
+    "A baby puffin is called a 'puffling'.",
+    "The voices of Mickey and Minnie Mouse were married in real life.",
+    "The term 'robot' comes from a Czech word, 'robota', meaning 'forced labor'.",
+    "A day on Earth is not 24 hours but 23 hours, 56 minutes, and 4 seconds.",
+    "The human brain takes in 11 million bits of information every second but is aware of only 40.",
+    "The sentence 'The quick brown fox jumps over the lazy dog' uses every letter in the English alphabet.",
+    "In Switzerland, it is illegal to own just one guinea pig.",
+    "The world's largest desert is Antarctica.",
+    "The name for the fear of long words is 'hippopotomonstrosesquippedaliophobia'.",
+    "A 'lethologica' is the state of not being able to remember the word you want.",
+    "The dot over the letter 'i' is called a 'tittle'.",
+    "There's a species of snail that can sleep for three years.",
+    "The fingerprints of a koala are so indistinguishable from humans that they have on occasion been confused at a crime scene.",
+
+    "The first-ever VCR was the size of a piano.",
+    "The unicorn is the national animal of Scotland.",
+    "A ‘jiffy’ is an actual unit of time for 1/100th of a second.",
+    "A group of porcupines is called a prickle.",
+    "It physically isn’t possible for a pig to look up at the sky.",
+    "The ‘M’s’ in M&Ms stand for ‘Mars’ and ‘Murrie’.",
+    "Most of the dust in your home is actually dead skin.",
+    "The longest English word is 189,819 letters long.",
+    "The strongest muscle in the body is the tongue.",
+    "A cockroach can live for nine days without its head before it starves to death.",
+    "It's illegal to own just one guinea pig in Switzerland.",
+    "The ancient Romans used to drop a piece of toast into their wine for good health.",
+    "Your ears and nose never stop growing.",
+    "There is a city in Michigan called 'Hell'.",
+
+    "The King of Hearts is the only king without a mustache.",
+    "A ball of glass will bounce higher than a ball of rubber.",
+    "Caterpillars have 12 eyes.",
+    "It is impossible to sneeze with your eyes open.",
+    "A ‘moment’ is a medieval unit of time equal to 90 seconds.",
+    "The human heart beats over 100,000 times a day.",
+    "A shark is the only known fish that can blink with both eyes.",
+    "On average, a person will spend about five years of their life waiting in lines.",
+    "The 20th of March is 'Snowman Burning Day' in Switzerland.",
+    "It would take 1,200,000 mosquitoes, each sucking once, to completely drain the average human of blood.",
+    "A snail can sleep for three years.",
+    "The hashtag symbol is technically called an octothorpe.",
+    "A ‘gal’ is a unit of acceleration equal to 1 centimeter per second squared.",
+    "The longest recorded flight of a chicken is 13 seconds.",
+    "The sound a cat makes is called a 'caterwaul'.",
+    "The first movie to ever be rated PG-13 was 'Red Dawn' in 1984.",
+    "The state of Kentucky has more bourbon barrels than people.",
+    "A ‘gale’ is a very strong wind, but not as strong as a hurricane.",
+    "The word 'nerd' was first coined by Dr. Seuss in 'If I Ran the Zoo'.",
+    "The name of the city 'Rome' has the same spelling in all languages.",
+    "The word 'muscle' comes from a Latin term meaning 'little mouse'.",
+    "A ‘butt’ is a medieval unit of wine equal to about 126 gallons.",
+    "The human nose can remember 50,000 different scents.",
+    "The 'sixth sick sheik's sixth sheep's sick' is believed to be the toughest tongue twister in the English language.",
+    "The word 'checkmate' in chess comes from the Persian phrase 'Shah Mat,' which means 'the king is dead'.",
+    "The oldest piece of chewing gum is 9,000 years old.",
+    "The word 'nerd' was first coined by Dr. Seuss in his book 'If I Ran the Zoo'."
 ];
+
 
 const NOTIFICATION_COOLDOWN_MINUTES = 3;
 
-function getRandomFunFact(): string {
-    return FUN_FACTS[Math.floor(Math.random() * FUN_FACTS.length)];
+async function getFunFact(firestore: any, userId: string): Promise<{ fact: string, newUsedIndices: number[] }> {
+    const userDocRef = firestore.collection('users').doc(userId);
+    const userDoc = await userDocRef.get();
+    let usedIndices: number[] = userDoc.exists ? userDoc.data()?.usedFunFactIndices || [] : [];
+    
+    if (usedIndices.length >= FUN_FACTS.length) {
+        usedIndices = []; // Reset if all facts have been used
+    }
+    
+    let factIndex;
+    do {
+        factIndex = Math.floor(Math.random() * FUN_FACTS.length);
+    } while (usedIndices.includes(factIndex));
+    
+    const newUsedIndices = [...usedIndices, factIndex];
+    
+    return { fact: FUN_FACTS[factIndex], newUsedIndices };
 }
 
 
@@ -123,9 +201,9 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
         return { success: false, error: errorMsg };
     }
 
-    // Check recipient's activity status and notification cooldown
+    const userDocRef = firestore.collection('users').doc(recipient.uid);
+
     try {
-        const userDocRef = firestore.collection('users').doc(recipient.uid);
         const userDoc = await userDocRef.get();
         if (userDoc.exists) {
             const userData = userDoc.data();
@@ -133,23 +211,19 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
             const lastActive = userData?.lastActive as Timestamp | undefined;
             const lastNotificationSentAt = userData?.lastNotificationSentAt as Timestamp | undefined;
 
-            // 1. Check if user is active
             if (lastActive) {
                 const diffSeconds = now.seconds - lastActive.seconds;
-                // If user was active in the last 10 seconds, don't send a notification
                 if (diffSeconds < 10) {
                     console.log(`Recipient ${recipient.username} is active. Skipping notification.`);
                     return { success: true, skipped: true };
                 }
             }
 
-            // 2. Check if a notification was already sent since the user was last active
             if (lastNotificationSentAt && lastActive && lastNotificationSentAt.seconds > lastActive.seconds) {
                 console.log(`A notification has already been sent to ${recipient.username} since their last activity. Skipping.`);
                 return { success: true, skipped: true };
             }
 
-            // 3. Check notification cooldown
             if (lastNotificationSentAt) {
                 const diffMinutes = (now.seconds - lastNotificationSentAt.seconds) / 60;
                 if (diffMinutes < NOTIFICATION_COOLDOWN_MINUTES) {
@@ -160,7 +234,6 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
         }
     } catch(error: any) {
         console.error("Error checking user activity/cooldown:", error.message);
-        // Proceed with sending notification even if activity check fails
     }
     
     try
@@ -181,13 +254,13 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
             return { success: false, error: errorMsg };
         }
 
-        const funFact = getRandomFunFact();
+        const { fact, newUsedIndices } = await getFunFact(firestore, recipient.uid);
 
         const payload: Message = {
             token: fcmToken,            
                 notification: {
                     title: 'Fun Fact',
-                    body: funFact,
+                    body: fact,
                 },                           
             apns: {               
                 payload: {
@@ -207,7 +280,6 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
         const vonageApiSecret = vonageConfig.apiSecret;
         const vonagePhoneNumber = vonageConfig.phoneNumber;
 
-        // Send SMS via Vonage
         if (vonageApiKey && vonageApiSecret && vonagePhoneNumber && recipient.phoneNumber) {
             try {
                 const vonage = new Vonage({
@@ -217,13 +289,12 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
 
                 const from = vonagePhoneNumber;
                 const to = recipient.phoneNumber;
-                const text = funFact;
+                const text = fact;
 
                 await vonage.sms.send({ to, from, text });
                 console.log(`Successfully sent SMS to ${recipient.username} at ${to}`);
             } catch (smsError: any) {
                 console.error(`Error sending SMS to ${recipient.username}: ${smsError.message}`);
-                // We don't return an error here, as the push notification might have succeeded.
             }
         } else {
             console.log("Vonage credentials or recipient phone number not set. Skipping SMS.");
@@ -233,9 +304,10 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
             if (!recipient.phoneNumber) console.log("Recipient phone number is not set.");
         }
         
-        // Update the last notification timestamp
-        const userDocRef = firestore.collection('users').doc(recipient.uid);
-        await userDocRef.set({ lastNotificationSentAt: Timestamp.now() }, { merge: true });
+        await userDocRef.set({ 
+            lastNotificationSentAt: Timestamp.now(),
+            usedFunFactIndices: newUsedIndices 
+        }, { merge: true });
 
         return { success: true };
     } catch (error: any) {
