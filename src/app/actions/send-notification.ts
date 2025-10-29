@@ -129,9 +129,10 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
         if (userDoc.exists) {
             const userData = userDoc.data();
             const now = Timestamp.now();
+            const lastActive = userData?.lastActive as Timestamp | undefined;
+            const lastNotificationSentAt = userData?.lastNotificationSentAt as Timestamp | undefined;
 
             // 1. Check if user is active
-            const lastActive = userData?.lastActive as Timestamp | undefined;
             if (lastActive) {
                 const diffSeconds = now.seconds - lastActive.seconds;
                 // If user was active in the last 10 seconds, don't send a notification
@@ -141,8 +142,13 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
                 }
             }
 
-            // 2. Check notification cooldown
-            const lastNotificationSentAt = userData?.lastNotificationSentAt as Timestamp | undefined;
+            // 2. Check if a notification was already sent since the user was last active
+            if (lastNotificationSentAt && lastActive && lastNotificationSentAt.seconds > lastActive.seconds) {
+                console.log(`A notification has already been sent to ${recipient.username} since their last activity. Skipping.`);
+                return { success: true, skipped: true };
+            }
+
+            // 3. Check notification cooldown
             if (lastNotificationSentAt) {
                 const diffMinutes = (now.seconds - lastNotificationSentAt.seconds) / 60;
                 if (diffMinutes < NOTIFICATION_COOLDOWN_MINUTES) {
