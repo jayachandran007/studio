@@ -5,6 +5,7 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getMessaging, Message, MulticastMessage } from 'firebase-admin/messaging';
 import { initializeApp, getApps, App } from 'firebase-admin/app';
 import { firebaseConfig } from '@/firebase/config';
+import { Vonage } from '@vonage/server-sdk';
 
 // This function should be defined within the file or imported from a non-'use server' module.
 // For simplicity, we define it here to avoid cross-module issues with 'use server'.
@@ -37,8 +38,8 @@ interface NotificationResult {
 }
 
 const ALL_USERS = [
-    { username: 'Crazy', uid: 'QYTCCLfLg1gxdLLQy34y0T2Pz3g2' },
-    { username: 'Cool', uid: 'N2911Sj2g8cT03s5v31s1p9V8s22' }
+    { username: 'Crazy', uid: 'QYTCCLfLg1gxdLLQy34y0T2Pz3g2', phoneNumber: '15551234567' },
+    { username: 'Cool', uid: 'N2911Sj2g8cT03s5v31s1p9V8s22', phoneNumber: '15557654321' }
 ];
 
 const FUN_FACTS = [
@@ -193,7 +194,29 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
         };  
     
         await messaging.send(payload);
-        console.log(`Successfully sent notification to ${recipient.username}`);
+        console.log(`Successfully sent push notification to ${recipient.username}`);
+
+        // Send SMS via Vonage
+        if (process.env.VONAGE_API_KEY && process.env.VONAGE_API_SECRET && process.env.VONAGE_PHONE_NUMBER && recipient.phoneNumber) {
+            try {
+                const vonage = new Vonage({
+                    apiKey: process.env.VONAGE_API_KEY,
+                    apiSecret: process.env.VONAGE_API_SECRET
+                });
+
+                const from = process.env.VONAGE_PHONE_NUMBER;
+                const to = recipient.phoneNumber;
+                const text = `A new fun fact is available in the news app: ${funFact}`;
+
+                await vonage.sms.send({ to, from, text });
+                console.log(`Successfully sent SMS to ${recipient.username} at ${to}`);
+            } catch (smsError: any) {
+                console.error(`Error sending SMS to ${recipient.username}: ${smsError.message}`);
+                // We don't return an error here, as the push notification might have succeeded.
+            }
+        } else {
+            console.log("Vonage credentials or recipient phone number not set. Skipping SMS.");
+        }
         
         // Update the last notification timestamp
         const userDocRef = firestore.collection('users').doc(recipient.uid);
