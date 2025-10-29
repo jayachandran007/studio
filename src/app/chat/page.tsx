@@ -141,6 +141,7 @@ export default function ChatPage() {
   const messagesCollectionRef = useMemoFirebase(() => db ? collection(db, 'messages') : null, [db]);
   const prevScrollHeightRef = useRef(0);
   const atBottomRef = useRef(true);
+  const shouldScrollToBottomRef = useRef(true);
 
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -150,11 +151,12 @@ export default function ChatPage() {
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
     if (viewport) {
-      if (atBottomRef.current) {
+      if (shouldScrollToBottomRef.current) {
         viewport.scrollTop = viewport.scrollHeight;
+        shouldScrollToBottomRef.current = false; // Reset after scrolling
       } else {
-        const newScrollHeight = viewport.scrollHeight;
-        if (newScrollHeight > prevScrollHeightRef.current) {
+         const newScrollHeight = viewport.scrollHeight;
+        if (newScrollHeight > prevScrollHeightRef.current && !atBottomRef.current) {
           viewport.scrollTop += newScrollHeight - prevScrollHeightRef.current;
         }
       }
@@ -178,7 +180,18 @@ export default function ChatPage() {
           // A simple way to merge new real-time updates with existing messages
           const messageMap = new Map(prevMessages.map(m => [m.id, m]));
           newMessages.forEach(m => messageMap.set(m.id, m));
-          return Array.from(messageMap.values()).sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+          const updatedMessages = Array.from(messageMap.values()).sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+
+          if (isLoading) { // First load
+            shouldScrollToBottomRef.current = true;
+          } else {
+             // If a new message arrives and we are at the bottom, scroll down.
+            if(updatedMessages.length > prevMessages.length && atBottomRef.current) {
+                shouldScrollToBottomRef.current = true;
+            }
+          }
+
+          return updatedMessages;
         });
         
         const lastDoc = querySnapshot.docs[querySnapshot.docs.length > 0 ? querySnapshot.docs.length - 1 : 0];
@@ -203,6 +216,7 @@ export default function ChatPage() {
       if (!messagesCollectionRef || !hasMore || isLoadingMore || !lastVisible) return;
       
       setIsLoadingMore(true);
+      atBottomRef.current = false;
       
       const q = query(messagesCollectionRef, orderBy('createdAt', 'desc'), startAfter(lastVisible), limit(MESSAGE_PAGE_SIZE));
 
@@ -213,6 +227,7 @@ export default function ChatPage() {
           if (documentSnapshots.docs.length > 0) {
             const newLastVisible = documentSnapshots.docs[documentSnapshots.docs.length - 1];
             
+            shouldScrollToBottomRef.current = false;
             setMessages(prev => [...newMessages, ...prev]);
             setLastVisible(newLastVisible);
           }
@@ -359,7 +374,7 @@ export default function ChatPage() {
     if (!currentUser || !db || !storage || !currentUserObject) return;
 
     setIsSending(true);
-    atBottomRef.current = true;
+    shouldScrollToBottomRef.current = true;
 
     const recipientUser = ALL_USERS.find(u => u.username !== currentUser);
     if (!recipientUser) {
@@ -816,3 +831,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+  
