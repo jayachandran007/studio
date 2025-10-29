@@ -9,6 +9,7 @@ import { Button } from './ui/button';
 import { Phone, PhoneOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { cn } from '@/lib/utils';
 
 interface VideoChatProps {
     firestore: Firestore;
@@ -38,6 +39,12 @@ export function VideoChat({ firestore, callId, currentUser }: VideoChatProps) {
     const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'in-call' | 'error'>('idle');
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
 
+    // For draggable PiP
+    const pipRef = useRef<HTMLDivElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [position, setPosition] = useState({ x: 20, y: 80 }); // Initial position (from top-left)
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
     useEffect(() => {
         const getCameraPermission = async () => {
             try {
@@ -63,6 +70,65 @@ export function VideoChat({ firestore, callId, currentUser }: VideoChatProps) {
         getCameraPermission();
     }, [toast]);
     
+    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(true);
+        setDragStart({
+            x: e.clientX - position.x,
+            y: e.clientY - position.y
+        });
+    };
+    
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        const parentRect = pipRef.current?.parentElement?.getBoundingClientRect();
+        if (!parentRect) return;
+
+        let newX = e.clientX - dragStart.x;
+        let newY = e.clientY - dragStart.y;
+        
+        // Constrain within parent bounds
+        const pipRect = pipRef.current.getBoundingClientRect();
+        newX = Math.max(0, Math.min(newX, parentRect.width - pipRect.width));
+        newY = Math.max(0, Math.min(newY, parentRect.height - pipRect.height));
+
+        setPosition({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+        const touch = e.touches[0];
+        setIsDragging(true);
+        setDragStart({
+            x: touch.clientX - position.x,
+            y: touch.clientY - position.y
+        });
+    };
+
+    const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+        if (!isDragging) return;
+        const touch = e.touches[0];
+        const parentRect = pipRef.current?.parentElement?.getBoundingClientRect();
+        if (!parentRect) return;
+        
+        let newX = touch.clientX - dragStart.x;
+        let newY = touch.clientY - dragStart.y;
+
+        const pipRect = pipRef.current.getBoundingClientRect();
+        newX = Math.max(0, Math.min(newX, parentRect.width - pipRect.width));
+        newY = Math.max(0, Math.min(newY, parentRect.height - pipRect.height));
+
+        setPosition({ x: newX, y: newY });
+    };
+
+    const handleTouchEnd = () => {
+        setIsDragging(false);
+    };
+
     const startCall = async () => {
         if (!firestore || !currentUser || !localStream.current) {
             toast({ title: 'Error', description: 'Cannot start call. Resources not ready.', variant: 'destructive'});
@@ -109,9 +175,15 @@ export function VideoChat({ firestore, callId, currentUser }: VideoChatProps) {
 
         onSnapshot(callDocRef, (snapshot) => {
             const data = snapshot.data();
-            if (!pc.current?.currentRemoteDescription && data?.answer) {
-                const answerDescription = new RTCSessionDescription(data.answer);
-                pc.current?.setRemoteDescription(answerDescription);
+            if (data?.status === 'ringing') {
+                setCallStatus('calling');
+            }
+            if (data?.answer) {
+                if(!pc.current?.currentRemoteDescription) {
+                    const answerDescription = new RTCSessionDescription(data.answer);
+                    pc.current?.setRemoteDescription(answerDescription);
+                }
+                setCallStatus('in-call');
             }
         });
 
@@ -123,13 +195,11 @@ export function VideoChat({ firestore, callId, currentUser }: VideoChatProps) {
                 }
             });
         });
-        setCallStatus('in-call');
     };
     
     const answerCall = async () => {
         if (!firestore || !localStream.current) return;
-        setCallStatus('in-call');
-
+        
         const callDocRef = doc(firestore, 'videoCalls', callId);
         const answerCandidatesRef = collection(callDocRef, 'answerCandidates');
         const offerCandidatesRef = collection(callDocRef, 'offerCandidates');
@@ -166,7 +236,8 @@ export function VideoChat({ firestore, callId, currentUser }: VideoChatProps) {
                 type: answerDescription.type,
                 sdp: answerDescription.sdp,
             };
-            await updateDoc(callDocRef, { answer });
+            await updateDoc(callDocRef, { answer, status: 'connected' });
+             setCallStatus('in-call');
 
             onSnapshot(offerCandidatesRef, (snapshot) => {
                 snapshot.docChanges().forEach((change) => {
@@ -204,44 +275,58 @@ export function VideoChat({ firestore, callId, currentUser }: VideoChatProps) {
 
 
     return (
-        <div className="w-full max-w-4xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-muted rounded-lg overflow-hidden aspect-video relative">
-                    <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                    <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">You</div>
-                </div>
-                <div className="bg-muted rounded-lg overflow-hidden aspect-video relative">
-                    <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                    <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">Remote</div>
-                </div>
+        <div 
+            className="relative w-full h-full"
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
+            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            
+            <div 
+                ref={pipRef}
+                className="absolute w-1/4 max-w-[120px] aspect-[9/16] rounded-lg overflow-hidden shadow-2xl cursor-move touch-none"
+                style={{
+                    top: position.y,
+                    left: position.x,
+                    display: hasCameraPermission ? 'block' : 'none'
+                }}
+                onMouseDown={handleMouseDown}
+                onTouchStart={handleTouchStart}
+            >
+                <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
             </div>
 
             {hasCameraPermission === false && (
-                <Alert variant="destructive" className="mt-4">
-                    <AlertTitle>Camera Access Required</AlertTitle>
-                    <AlertDescription>
-                        Please allow camera and microphone access to use the video call feature. Check your browser settings.
-                    </AlertDescription>
-                </Alert>
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <Alert variant="destructive" className="max-w-sm">
+                        <AlertTitle>Camera Access Required</AlertTitle>
+                        <AlertDescription>
+                            Please allow camera and microphone access to use the video call feature. Check your browser settings.
+                        </AlertDescription>
+                    </Alert>
+                </div>
             )}
             
-            <div className="mt-6 flex justify-center items-center gap-4">
-                {callStatus === 'idle' && (
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-4 z-10">
+                {callStatus === 'idle' && hasCameraPermission && (
                     <>
-                        <Button onClick={startCall} disabled={hasCameraPermission !== true}>
-                            <Phone className="mr-2 h-4 w-4" /> Start Call
+                        <Button onClick={startCall} className='bg-green-500 hover:bg-green-600 rounded-full h-16 w-16 p-0'>
+                            <Phone className="h-7 w-7" />
                         </Button>
-                        <Button onClick={answerCall} disabled={hasCameraPermission !== true} variant="outline">
+                        <Button onClick={answerCall} variant="outline" className="bg-blue-500 hover:bg-blue-600 text-white rounded-full h-16 w-16 p-0 border-0">
                             Join Call
                         </Button>
                     </>
                 )}
 
-                {callStatus === 'calling' && <p className="text-muted-foreground">Calling...</p>}
+                {callStatus === 'calling' && <p className="text-white bg-black/30 px-4 py-2 rounded-full">Calling...</p>}
                 
                 {callStatus === 'in-call' && (
-                    <Button onClick={hangUp} variant="destructive">
-                        <PhoneOff className="mr-2 h-4 w-4" /> Hang Up
+                    <Button onClick={hangUp} variant="destructive" className="rounded-full h-16 w-16 p-0">
+                        <PhoneOff className="h-7 w-7" />
                     </Button>
                 )}
             </div>

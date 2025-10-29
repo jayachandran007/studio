@@ -67,7 +67,7 @@ export default function VideoPage() {
                 status: 'ringing',
             });
             router.push(`/video?callId=${CALL_ID}`);
-        } catch (error: any) {
+        } catch (error: any) => {
             toast({ title: "Error starting call", description: error.message, variant: "destructive"});
         }
 
@@ -98,22 +98,17 @@ export default function VideoPage() {
 
     // A simple lobby UI
     return (
-        <div className="flex h-screen w-full flex-col bg-background">
-            <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6">
-                <Button variant="outline" size="icon" className="shrink-0" onClick={() => router.back()}>
+        <div className="flex h-screen w-full flex-col bg-black">
+            <header className="absolute top-0 z-20 flex w-full h-16 items-center justify-between gap-4 bg-transparent px-4 text-white">
+                <Button variant="ghost" size="icon" className="shrink-0 hover:bg-white/20" onClick={() => router.back()}>
                     <ArrowLeft className="h-5 w-5" />
                     <span className="sr-only">Back</span>
                 </Button>
                 <h1 className="flex-1 text-xl font-semibold">Video Call</h1>
+                 <div className="w-9" />
             </header>
-            <main className="flex-1 flex flex-col items-center justify-center p-4">
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold mb-4">Ready to connect?</h2>
-                    <p className="text-muted-foreground mb-8">
-                        You can start a video call with the other user.
-                    </p>
-                    <VideoChat firestore={firestore!} callId={CALL_ID} currentUser={currentUser} />
-                </div>
+            <main className="flex-1 flex flex-col items-center justify-center">
+                <VideoChat firestore={firestore!} callId={CALL_ID} currentUser={currentUser} />
             </main>
         </div>
     );
