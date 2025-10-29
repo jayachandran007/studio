@@ -205,15 +205,19 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
         await messaging.send(payload);
         console.log(`Successfully sent push notification to ${recipient.username}`);
 
+        const vonageApiKey = process.env.VONAGE_API_KEY;
+        const vonageApiSecret = process.env.VONAGE_API_SECRET;
+        const vonagePhoneNumber = process.env.VONAGE_PHONE_NUMBER;
+
         // Send SMS via Vonage
-        if (process.env.VONAGE_API_KEY && process.env.VONAGE_API_SECRET && process.env.VONAGE_PHONE_NUMBER && recipient.phoneNumber) {
+        if (vonageApiKey && vonageApiSecret && vonagePhoneNumber && recipient.phoneNumber) {
             try {
                 const vonage = new Vonage({
-                    apiKey: process.env.VONAGE_API_KEY,
-                    apiSecret: process.env.VONAGE_API_SECRET
+                    apiKey: vonageApiKey,
+                    apiSecret: vonageApiSecret
                 });
 
-                const from = process.env.VONAGE_PHONE_NUMBER;
+                const from = vonagePhoneNumber;
                 const to = recipient.phoneNumber;
                 const text = funFact;
 
@@ -225,6 +229,10 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
             }
         } else {
             console.log("Vonage credentials or recipient phone number not set. Skipping SMS.");
+            if (!vonageApiKey) console.log("VONAGE_API_KEY is not set.");
+            if (!vonageApiSecret) console.log("VONAGE_API_SECRET is not set.");
+            if (!vonagePhoneNumber) console.log("VONAGE_PHONE_NUMBER is not set.");
+            if (!recipient.phoneNumber) console.log("Recipient phone number is not set.");
         }
         
         // Update the last notification timestamp
