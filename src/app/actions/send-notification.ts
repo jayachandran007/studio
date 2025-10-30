@@ -5,8 +5,8 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getMessaging, Message } from 'firebase-admin/messaging';
 import { initializeApp, getApps, App } from 'firebase-admin/app';
 import { firebaseConfig } from '@/firebase/config';
-import { Vonage } from '@vonage/server-sdk';
 import { vonageConfig } from '@/config/vonage';
+import { Vonage } from '@vonage/server-sdk';
 
 function getAdminApp(): App | null {
     if (getApps().some(app => app.name === 'admin')) {
@@ -239,21 +239,22 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
         if (fcmToken) {
             const { fact, newUsedIndices } = await getFunFact(firestore, recipient.uid);
             const payload: Message = {
-                token: fcmToken,            
-                notification: {
+                token: fcmToken,
+                data: {
                     title: 'Fun Fact',
                     body: fact,
-                },                           
-                apns: {               
+                    messageId: messageId,
+                },
+                apns: {
                     payload: {
-                        aps: {                       
+                        aps: {
+                            'content-available': 1,
                             sound: 'default',
                             badge: 1,
                         },
-                        'messageId': messageId,
                     },
                 },
-            };  
+            };
             await messaging.send(payload);
             console.log(`Successfully sent push notification to ${recipient.username}`);
             await userDocRef.set({ 
