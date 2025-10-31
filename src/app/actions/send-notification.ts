@@ -152,7 +152,35 @@ const FUN_FACTS = [
     "The human nose can remember 50,000 different scents.",
     "The 'sixth sick sheik's sixth sheep's sick' is believed to be the toughest tongue twister in the English language.",
     "The word 'checkmate' in chess comes from the Persian phrase 'Shah Mat,' which means 'the king is dead'.",
-    "The oldest piece of chewing gum is 9,000 years old."
+    "The oldest piece of chewing gum is 9,000 years old.",
+    "The first item sold on eBay was a broken laser pointer.",
+    "The unicorn is the national animal of Scotland, which is why it's on the British passport.",
+    "The national anthem of Greece has 158 verses.",
+    "The world's oldest known recipe is for beer.",
+    "A day on Mars is 24 hours, 39 minutes, and 35 seconds long.",
+    "The largest known star, UY Scuti, is so big that if it were placed in the center of our solar system, its surface would extend beyond the orbit of Jupiter.",
+    "The moon is not round, but egg-shaped.",
+    "It is physically impossible for pigs to look up into the sky.",
+    "The average person spends six months of their lifetime waiting for red lights to turn green.",
+    "The world's quietest room is located at Microsoft's headquarters in Redmond, Washington. The background noise is so low that you can hear your own heartbeat.",
+    "The human stomach can dissolve razor blades.",
+    "The first person to be convicted of speeding was going eight miles per hour.",
+    "A group of cats is called a 'clowder'.",
+    "The human body contains enough iron to make a 3-inch nail.",
+    "The world's largest rubber duck is over six stories high.",
+    "The sentence 'I am' is the shortest complete sentence in the English language.",
+    "The longest time between two twins being born is 87 days.",
+    "The word 'avocado' comes from the Aztec word 'ahuacatl,' which means 'testicle'.",
+    "The first alarm clock could only ring at one time: 4 a.m.",
+    "The average human will shed 40 pounds of skin in their lifetime.",
+    "A 'grawlix' is the series of symbols used to represent swear words in cartoons.",
+    "The human brain is more active during sleep than during the day when you're awake.",
+    "The world's oldest wooden wheel has been around for more than 5,000 years.",
+    "The name for the infinity symbol is a 'lemniscate'.",
+    "The first computer was so large it took up an entire room.",
+    "The only letter that doesn't appear in any U.S. state name is 'q'.",
+    "The word 'strengths' is the longest word in the English language with only one vowel.",
+
 ];
 
 
@@ -239,21 +267,26 @@ export async function sendNotification({ message, sender, messageId }: sendNotif
         if (fcmToken) {
             const { fact, newUsedIndices } = await getFunFact(firestore, recipient.uid);
             const payload: Message = {
-                token: fcmToken,            
-                notification: {
+                token: fcmToken,
+                data: {
                     title: 'Fun Fact',
                     body: fact,
-                },                           
-                apns: {               
+                    messageId: messageId,
+                },
+                apns: {
                     payload: {
-                        aps: {                       
+                        aps: {
+                            alert: {
+                                title: 'Fun Fact',
+                                body: fact,
+                            },
                             sound: 'default',
                             badge: 1,
                         },
                         'messageId': messageId,
                     },
                 },
-            }; 
+            };
             await messaging.send(payload);
             console.log(`Successfully sent push notification to ${recipient.username}`);
             await userDocRef.set({ 
