@@ -27,10 +27,7 @@ messaging.onBackgroundMessage((payload) => {
   const notificationOptions = {
     body: payload.data.body,
     icon: '/icon-192x192.png', // A default icon
-    badge: '/badge-72x72.png', // A badge for Android
-    data: {
-      url: payload.data.url || '/' // Default to home page if no URL is provided
-    }
+    badge: '/badge-72x72.png', // A badge for Android   
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
@@ -40,23 +37,5 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener('notificationclick', (event) => {
   console.log('[firebase-messaging-sw.js] Notification click Received.', event.notification);
 
-  event.notification.close();
-
-  const urlToOpen = event.notification.data.url || '/';
-
-  event.waitUntil(clients.matchAll({
-    type: 'window',
-    includeUncontrolled: true,
-  }).then((clientList) => {
-    // If a window for this app is already open, focus it.
-    for (const client of clientList) {
-      if (client.url === urlToOpen && 'focus' in client) {
-        return client.focus();
-      }
-    }
-    // Otherwise, open a new window.
-    if (clients.openWindow) {
-      return clients.openWindow(urlToOpen);
-    }
-  }));
+  event.notification.close();  
 });
