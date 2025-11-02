@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirebase } from '@/firebase/provider';
 import { VideoChat } from '@/components/VideoChat';
@@ -14,7 +14,7 @@ const ALL_USERS = [
     { username: 'Cool', uid: 'N2911Sj2g8cT03s5v31s1p9V8s22' }
 ];
 
-const CALL_ID = "main_call"; // Using a static call ID for this 1-on-1 app
+const CALL_ID = "main_call";
 
 export default function VideoPage() {
     const router = useRouter();
@@ -23,8 +23,6 @@ export default function VideoPage() {
     const [currentUser, setCurrentUser] = useState<any | null>(null);
 
     useEffect(() => {
-        // Safari on iOS sometimes has issues with auth state persistence on page loads.
-        // We check sessionStorage first for a quicker and more reliable auth check on mobile.
         const userInSession = sessionStorage.getItem('currentUser');
         const userObject = userInSession ? ALL_USERS.find(u => u.username === userInSession) : null;
 
@@ -36,8 +34,6 @@ export default function VideoPage() {
         if (auth.currentUser) {
             setCurrentUser(auth.currentUser);
         } else {
-            // Create a mock user object if the full auth object isn't available yet
-            // This is enough for the component to proceed while auth state finalizes
              setCurrentUser({
                 uid: userObject.uid,
                 displayName: userObject.username
@@ -53,7 +49,6 @@ export default function VideoPage() {
         );
     }
 
-    // A simple lobby UI
     return (
         <div className="flex h-screen w-full flex-col bg-black">
             <header className="absolute top-0 z-20 flex w-full h-16 items-center justify-between gap-4 bg-transparent px-4 text-white">
