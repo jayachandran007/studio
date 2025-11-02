@@ -4,7 +4,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirebase } from '@/firebase/provider';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { VideoChat } from '@/components/VideoChat';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
@@ -21,8 +20,6 @@ export default function VideoPage() {
     const router = useRouter();
     const { firestore, auth } = useFirebase();
     const { toast } = useToast();
-    const [callDocExists, setCallDocExists] = useState(false);
-    const [isCheckingDoc, setIsCheckingDoc] = useState(true);
     const [currentUser, setCurrentUser] = useState<any | null>(null);
 
     useEffect(() => {
@@ -48,47 +45,7 @@ export default function VideoPage() {
         }
     }, [router, auth]);
 
-
-    const callDocRef = firestore ? doc(firestore, 'videoCalls', CALL_ID) : null;
-
-    const createCall = useCallback(async () => {
-        if (!firestore || !currentUser) return;
-
-        const recipient = ALL_USERS.find(u => u.uid !== currentUser.uid);
-        if (!recipient) {
-            toast({ title: "Error", description: "Could not find recipient to call.", variant: "destructive"});
-            return;
-        }
-
-        try {
-            await setDoc(callDocRef!, {
-                initiatorUid: currentUser.uid,
-                recipientUid: recipient.uid,
-                status: 'ringing',
-            });
-            router.push(`/video?callId=${CALL_ID}`);
-        } catch (error: any) {
-            toast({ title: "Error starting call", description: error.message, variant: "destructive"});
-        }
-
-    }, [firestore, currentUser, callDocRef, router, toast]);
-
-    useEffect(() => {
-        const checkCallDoc = async () => {
-            if (!callDocRef) return;
-            try {
-                const docSnap = await getDoc(callDocRef);
-                setCallDocExists(docSnap.exists());
-            } catch (error) {
-                console.error("Error checking call document:", error);
-            } finally {
-                setIsCheckingDoc(false);
-            }
-        };
-        checkCallDoc();
-    }, [callDocRef]);
-
-    if (!currentUser) {
+    if (!currentUser || !firestore) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <Loader2 className="h-10 w-10 animate-spin" />
@@ -108,7 +65,7 @@ export default function VideoPage() {
                  <div className="w-9" />
             </header>
             <main className="flex-1 flex flex-col items-center justify-center">
-                <VideoChat firestore={firestore!} callId={CALL_ID} currentUser={currentUser} />
+                <VideoChat firestore={firestore} callId={CALL_ID} currentUser={currentUser} />
             </main>
         </div>
     );
