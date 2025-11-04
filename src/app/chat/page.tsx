@@ -171,7 +171,7 @@ export default function ChatPage() {
   useEffect(() => {
     const today = new Date();
     const currentYear = today.getFullYear();
-    let targetDate = new Date(currentYear, 11, 11); // Month is 0-indexed, so 11 is December
+    let targetDate = new Date(currentYear, 11, 12); // Month is 0-indexed, so 11 is December
 
     if (today > targetDate) {
       targetDate.setFullYear(currentYear + 1);
