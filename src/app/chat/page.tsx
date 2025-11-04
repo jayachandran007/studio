@@ -630,7 +630,7 @@ export default function ChatPage() {
   return (
     <>
       <div className="flex h-screen w-full flex-col bg-background">
-      <div className="absolute top-2 left-2 z-10">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
           {daysUntil !== null && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-background/50 backdrop-blur-sm px-2 py-1 rounded-full shadow">
               <HeartIcon className="h-4 w-4" />
