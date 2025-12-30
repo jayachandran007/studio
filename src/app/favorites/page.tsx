@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { collection, query, where, orderBy, getDocs, Timestamp, or } from "firebase/firestore";
+import { collection, query, where, orderBy, getDocs, Timestamp, or, and } from "firebase/firestore";
 import { useFirebase, useMemoFirebase } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -90,14 +90,14 @@ export default function FavoritesPage() {
     setIsLoading(true);
     const messagesRef = collection(db, "messages");
     
-    // Query for messages where the user is either the sender or receiver, and the message is favorited.
-    // Firestore requires separate queries for this 'OR' condition.
     const userIsParticipantQuery = query(
         messagesRef,
-        where("isFavorited", "==", true),
-        or(
-            where("senderUid", "==", currentUserObject.uid),
-            where("recipientUid", "==", currentUserObject.uid)
+        and(
+            where("isFavorited", "==", true),
+            or(
+                where("senderUid", "==", currentUserObject.uid),
+                where("recipientUid", "==", currentUserObject.uid)
+            )
         ),
         orderBy("createdAt", "desc")
     );
