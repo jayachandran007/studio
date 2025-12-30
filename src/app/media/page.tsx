@@ -75,7 +75,6 @@ export default function MediaPage() {
     
     let mediaQuery = query(
       collection(db, "messages"),
-      where("senderUid", "in", [ALL_USERS[0].uid, ALL_USERS[1].uid]),
       where(field, ">", ""),
       orderBy("createdAt", "desc"),
       limit(PAGE_SIZE)
@@ -185,7 +184,9 @@ export default function MediaPage() {
                   {type === 'videos' && item.videoUrl && (
                     <video
                       src={item.videoUrl}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      preload="metadata"
+                      controls
+                      className="w-full h-full object-cover"
                     />
                   )}
                   {type === 'audios' && (
@@ -194,11 +195,11 @@ export default function MediaPage() {
                        {item.fileName && <p className="text-xs text-center text-muted-foreground mt-2 truncate">{item.fileName}</p>}
                     </div>
                   )}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 text-white text-xs">
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 text-white text-xs pointer-events-none">
                     <p className="font-semibold">{item.sender}</p>
                     <p>{item.createdAt && format(item.createdAt.toDate(), "MMM d, yyyy")}</p>
                   </div>
-                   <div className="absolute top-1 right-1 bg-black/50 rounded-full p-1">
+                   <div className="absolute top-1 right-1 bg-black/50 rounded-full p-1 pointer-events-none">
                       {type === 'images' && <ImageIcon className="h-3 w-3 text-white" />}
                       {type === 'videos' && <Video className="h-3 w-3 text-white" />}
                       {type === 'audios' && <Music className="h-3 w-3 text-white" />}
