@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "news-hero",
+      "description": "Abstract network of glowing nodes representing digital connections and privacy.",
+      "imageUrl": "https://images.unsplash.com/photo-1488229297570-58520851e868?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxkaWdpdGFsJTIwbmV0d29ya3xlbnwwfHx8fDE3NjcwODU2NTJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "digital network"
+    },
+    {
+      "id": "news-article-1",
+      "description": "A shadowy figure in a hoodie, symbolizing online anonymity.",
+      "imageUrl": "https://images.unsplash.com/photo-1577764515560-65b415d68126?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxoYWNrZXIlMjBhbm9ueW1pdHl8ZW58MHx8fHwxNzY3MTA0MTAwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "hacker anonymity"
+    },
+    {
+      "id": "news-article-2",
+      "description": "An old library with books, representing digital archives and memory.",
+      "imageUrl": "https://images.unsplash.com/photo-1650513973625-2abc0854814c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxsaWJyYXJ5JTIwYXJjaGl2ZXN8ZW58MHx8fHwxNzY3MTA0MTAwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "library archives"
+    },
+    {
+      "id": "news-article-3",
+      "description": "Close up of a computer screen with code.",
+      "imageUrl": "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxjb2RlJTIwc2NyZWVufGVufDB8fHx8MTc2NzAyMTYwMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "code screen"
+    }
+  ]
 }
