@@ -77,7 +77,6 @@ export default function MediaPage() {
       collection(db, "messages"),
       where("senderUid", "in", [ALL_USERS[0].uid, ALL_USERS[1].uid]),
       where(field, ">", ""),
-      orderBy(field),
       orderBy("createdAt", "desc"),
       limit(PAGE_SIZE)
     );
@@ -272,4 +271,3 @@ export default function MediaPage() {
     </div>
   );
 }
-
